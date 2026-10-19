@@ -12,17 +12,6 @@ This sets up a constellation project in `my-org` from the [template](./create/te
 
 To add the SDK to a project you already have, read on.
 
-### Projects started from the template repository
-
-Projects cloned from [zodiac-constellation-template](https://github.com/zodiaceco/zodiac-constellation-template) before SDK 2.8 set up `allow`, `constellation` and `c` as globals in `.lib/`. They keep working as they are: update `@zodiaceco/sdk` and nothing else needs to change.
-
-To drop `.lib/` and import from the SDK instead, as new projects do:
-
-1. Import what each file uses: `import { allow, c, constellation, type Members, type Permissions } from "@zodiaceco/sdk"`.
-2. Delete `.lib/`, and remove `".lib/**/*"` and the `@/lib` path from `tsconfig.json`.
-3. In `package.json`, make `push` `zodiac pull && zodiac push` and remove `prepush`. `allow` is built from what `zodiac pull-contracts` records in `.zodiac/`, so `push` pulls the contracts too. Remove `@zodiaceco/api-types` unless your own code uses it.
-4. Check with `npx zodiac push --dry-run`, which prints what would be pushed.
-
 ## Getting started
 
 ### 1. Install
