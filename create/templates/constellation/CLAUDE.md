@@ -1,28 +1,12 @@
-# Zodiac Constellation — agent notes
+# Agent notes
 
-This repo is a **Zodiac constellation**: a TypeScript description of an org's smart-account graph (Safes, mods, users, permissions). `npm run push` sends the spec to Zodiac, which diffs it against onchain state and gives a UI to review + sign the transactions.
+A Zodiac constellation: TypeScript describing an org's Safes, Roles mods and permissions. `README.md` has the full API.
 
-User-facing docs are in `README.md` — read it before suggesting edits to `constellation/`.
-
-## Project map
-
-- `constellation/index.ts` — entrypoint. **Only exported values get pushed.**
-- `constellation/roles/<role>/` — `members.ts` (addresses) + `permissions.ts`
-  (a list of entries: `custom`, `defikit`, `swap`, `transfer` from
-  `@zodiaceco/sdk/actions`, or a bare `allow` kit permission).
-- `constellation/allowances/` — reusable Roles allowance objects (key, refill, period, ...).
-  A permission draws on one by naming its key: `c.withinAllowance("usdc_payouts")`.
-- `zodiac.config.ts` — contracts the `allow` kit should know about.
-- `.zodiac/` — generated codegen; **never edit by hand**. Re-run `npm run pull` (or `pull-org` / `pull-contracts`) to refresh.
-
-## Conventions
-
-- Entries **describe, they never compile**. `defikit` stores a protocol, verb
-  and parameters; `swap` stores its token lists. The permissions are built when
-  the constellation is deployed, so a stored revision never carries a copy of
-  what a preset meant on the day it was written.
-
-- Import `constellation`, `allow`, `c` and the `Members` / `Permissions` types from `@zodiaceco/sdk`, the entries from `@zodiaceco/sdk/actions`.
-- After editing `zodiac.config.ts` (contracts) or anything that changes referenced accounts/users, run `npm run pull` so the generated types match.
-- Any package manager works: run the scripts with `npm run`, `pnpm`, `yarn` or `bun run`. The `zodiac` CLI loads `.env` itself.
-- `npx zodiac push --dry-run` prints what would be pushed, without pulling or an API key: use it to check an edit.
+- Only values exported from `constellation/index.ts` are pushed.
+- A new role needs its folder under `constellation/roles/`, an export in `constellation/roles/index.ts`, and an entry in the Roles mod's `roles`.
+- `c.withinAllowance("<key>")` only works if that allowance is in the Roles mod's `allowances`.
+- `allow.<chain>.<contract>` only knows contracts listed in `zodiac.config.ts`. After changing them, run `npm run pull-contracts`.
+- Never edit `.zodiac/` or `abis/`: they're generated. Run `npm run pull` to refresh them.
+- Import `constellation`, `allow`, `c` and the types from `@zodiaceco/sdk`; `custom`, `defikit`, `swap` and `transfer` from `@zodiaceco/sdk/actions`.
+- Check an edit with `npx tsc --noEmit` and `npx zodiac push --dry-run`; neither needs an API key.
+- Don't run `npm run push` unless asked: it sends the constellation to the org's Zodiac workspace.
