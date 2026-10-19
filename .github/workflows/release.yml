@@ -14,8 +14,8 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      # Releases @zodiaceco/sdk and @zodiaceco/create (in create/) together, at
-      # the same version: see release-please-config.json.
+      # Releases @zodiaceco/sdk and @zodiaceco/create (in create/), each with a
+      # release pull request of its own: see release-please-config.json.
       - uses: googleapis/release-please-action@v4
         id: release
       # GitHub shows whichever release was created last as the latest, which
