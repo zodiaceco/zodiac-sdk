@@ -18,6 +18,14 @@ jobs:
       # the same version: see release-please-config.json.
       - uses: googleapis/release-please-action@v4
         id: release
+      # GitHub shows whichever release was created last as the latest, which
+      # can be create's. Point it at the SDK's.
+      - name: Show the SDK release as the latest
+        run: gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag_name }}
+        if: ${{ steps.release.outputs.release_created == 'true' }}
       - uses: actions/checkout@v4
         # ensure that a publication only occurs when a new release is created:
         if: ${{ steps.release.outputs.releases_created == 'true' }}
