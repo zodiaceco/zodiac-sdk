@@ -1,0 +1,20 @@
+{
+  "name": "zodiac-constellation",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "format": "prettier --write .",
+    "pull": "zodiac pull",
+    "pull-org": "zodiac pull-org",
+    "pull-contracts": "zodiac pull-contracts",
+    "push": "zodiac pull && zodiac push"
+  },
+  "dependencies": {
+    "@zodiaceco/sdk": "^2.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "prettier": "^3.6.2",
+    "typescript": "^5"
+  }
+}

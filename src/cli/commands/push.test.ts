@@ -7,10 +7,12 @@ import { ApiRequestError } from '../../api'
 import { ConstellationRejectedError } from '../../push'
 
 const mockPush = mock()
+const mockSpecify = mock()
 
 mock.module('../../push', () => ({
   ConstellationRejectedError,
   push: mockPush,
+  specify: mockSpecify,
 }))
 
 const { pushEntrypoint } = await import('./push')
@@ -34,6 +36,7 @@ describe('pushEntrypoint', () => {
   afterEach(() => {
     process.exitCode = 0
     mockPush.mockReset()
+    mockSpecify.mockReset()
   })
 
   it('prints what Zodiac refused and fails without a stack trace', async () => {
@@ -114,6 +117,135 @@ describe('pushEntrypoint', () => {
       { ops: 'from the root' },
       expect.anything()
     )
+  })
+
+  it('loads an entrypoint that imports a directory', async () => {
+    mockPush.mockResolvedValue([])
+
+    const { entrypoint, config } = createProject()
+    const root = join(config, '..')
+
+    mkdirSync(join(root, 'roles'))
+    writeFileSync(
+      join(root, 'roles', 'index.ts'),
+      'export const ops: string = "ops"\n'
+    )
+    writeFileSync(entrypoint, 'export { ops } from "./roles"\n')
+
+    await pushEntrypoint({ entrypoint, config, openInBrowser: false })
+
+    expect(mockPush).toHaveBeenCalledWith({ ops: 'ops' }, expect.anything())
+  })
+
+  it("loads the project's .env before the entrypoint", async () => {
+    mockPush.mockResolvedValue([])
+
+    const { entrypoint, config } = createProject()
+    writeFileSync(join(config, '..', '.env'), 'FIXTURE_TREASURY=0x1234\n')
+    writeFileSync(
+      entrypoint,
+      'export const treasury = process.env.FIXTURE_TREASURY\n'
+    )
+
+    try {
+      await pushEntrypoint({ entrypoint, config, openInBrowser: false })
+    } finally {
+      delete process.env.FIXTURE_TREASURY
+    }
+
+    expect(mockPush).toHaveBeenCalledWith(
+      { treasury: '0x1234' },
+      expect.anything()
+    )
+  })
+
+  it("points the entrypoint at the config's project", async () => {
+    mockPush.mockResolvedValue([])
+
+    const { entrypoint, config } = createProject()
+    writeFileSync(
+      entrypoint,
+      'export const root = process.env.ZODIAC_PROJECT_ROOT\n'
+    )
+
+    await pushEntrypoint({ entrypoint, config, openInBrowser: false })
+
+    expect(mockPush).toHaveBeenCalledWith(
+      { root: join(config, '..') },
+      expect.anything()
+    )
+    // Only while pushing: a script may go on to another project.
+    expect(process.env.ZODIAC_PROJECT_ROOT).toBeUndefined()
+  })
+
+  it("builds the entrypoint's allow kit from the config, before any pull", async () => {
+    mockSpecify.mockReturnValue([])
+
+    const { entrypoint, config } = createProject()
+    const root = join(config, '..')
+    const weth = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
+
+    writeFileSync(
+      config,
+      `export default { contracts: { eth: { weth: '${weth}' } } }\n`
+    )
+    mkdirSync(join(root, 'abis', 'eth'), { recursive: true })
+    writeFileSync(
+      join(root, 'abis', 'eth', 'weth.json'),
+      JSON.stringify([
+        {
+          type: 'function',
+          name: 'deposit',
+          inputs: [],
+          outputs: [],
+          stateMutability: 'payable',
+        },
+      ])
+    )
+    writeFileSync(
+      entrypoint,
+      [
+        `import { allow } from ${JSON.stringify(join(import.meta.dir, '..', '..', 'allow', 'project'))}`,
+        'export const deposit = allow.eth.weth.deposit()',
+        '',
+      ].join('\n')
+    )
+
+    const log = spyOn(console, 'log').mockImplementation(() => {})
+    try {
+      await pushEntrypoint({ entrypoint, config, dryRun: true })
+    } finally {
+      log.mockRestore()
+    }
+
+    expect(mockSpecify).toHaveBeenCalledWith({
+      deposit: expect.objectContaining({ targetAddress: weth }),
+    })
+  })
+
+  it('prints what it would push without an API key on a dry run', async () => {
+    mockSpecify.mockReturnValue([{ label: 'Ops', specification: [] }])
+
+    const { entrypoint, config } = createProject()
+    writeFileSync(config, 'export default {}\n')
+    writeFileSync(entrypoint, 'export const ops = "ops"\n')
+
+    const { ZODIAC_API_KEY } = process.env
+    delete process.env.ZODIAC_API_KEY
+    const log = spyOn(console, 'log').mockImplementation(() => {})
+
+    try {
+      await pushEntrypoint({ entrypoint, config, dryRun: true })
+
+      expect(mockSpecify).toHaveBeenCalledWith({ ops: 'ops' })
+      expect(log).toHaveBeenCalledWith(
+        JSON.stringify([{ label: 'Ops', specification: [] }], null, 2)
+      )
+      expect(mockPush).not.toHaveBeenCalled()
+    } finally {
+      log.mockRestore()
+      if (ZODIAC_API_KEY != null) process.env.ZODIAC_API_KEY = ZODIAC_API_KEY
+    }
   })
 
   it('pushes the repository the entrypoint is checked out from as its source', async () => {

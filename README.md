@@ -2,6 +2,16 @@
 
 Programmatically manage [Zodiac](https://www.zodiac.eco) account constellations.
 
+## Start a new project
+
+```bash
+npm create @zodiaceco@latest my-org
+```
+
+This sets up a constellation project in `my-org` from the [template](./create/templates/constellation): an example on Ethereum to start from, its dependencies installed, and, if you like, connected to your Zodiac org. `pnpm dlx @zodiaceco/create`, `bunx @zodiaceco/create` and `zodiac create` work the same. See [`@zodiaceco/create`](./create) for its options.
+
+To add the SDK to a project you already have, read on.
+
 ## Getting started
 
 ### 1. Install
@@ -30,7 +40,7 @@ import { defineConfig } from '@zodiaceco/sdk/cli/config'
 
 export default defineConfig({
   contracts: {
-    mainnet: {
+    eth: {
       dai: '0x6B175474E89094C44Da98b954EedeAC495271d0F',
     },
   },
@@ -61,7 +71,7 @@ your code  ◀──pull──  Zodiac OS  ◀───────────�
 
 **Deploying happens in the app.** The review page diffs the revision against on-chain state and derives addresses for new nodes from the personal Safe of whoever triggers the deployment — so until a deployment settles them, two people looking at the same constellation see different addresses for new nodes. Deploying registers the accounts in Zodiac OS and executes the transactions. A constellation moves Draft → Pending → Deployed, and the next push starts a new revision back at Draft.
 
-**Then pull again.** Once the new accounts have been seen on chain, the next `pull` includes them, keyed by label per chain — from that point on, reference them (`eth.safe['New Safe']`) instead of re-declaring them with a `nonce`. `bun push` runs `pull-org` first via the `prepush` hook, so this mostly takes care of itself. The case to avoid is pushing from a stale checkout where an already-deployed node is still declared by `nonce`: the original deployer would re-derive the same address, but anyone else deploying that revision would create a duplicate account.
+**Then pull again.** Once the new accounts have been seen on chain, the next `pull` includes them, keyed by label per chain — from that point on, reference them (`eth.safe['New Safe']`) instead of re-declaring them with a `nonce`. A project's `push` script runs `zodiac pull` first (`zodiac pull && zodiac push`), so this mostly takes care of itself. The case to avoid is pushing from a stale checkout where an already-deployed node is still declared by `nonce`: the original deployer would re-derive the same address, but anyone else deploying that revision would create a duplicate account.
 
 ## Constellation API
 
@@ -103,7 +113,7 @@ const ggDaoDelay = eth.delay['GG DAO Timelock']
 const ggDaoOverridden = eth.safe['GG DAO']({ threshold: 5 })
 ```
 
-> `bun push` runs `pull-org` first via the `prepush` hook, so re-pushing always sees the freshest existing-account values from your org.
+> A project's `push` script runs `zodiac pull` first, so re-pushing always sees the freshest existing-account values from your org.
 
 ### Creating new accounts
 
@@ -195,6 +205,22 @@ References are resolved by label at `push()` time, so both sides of the cycle mu
 const aliceAddress = eth.user['Alice Sample']
 ```
 
+### The `allow` kit
+
+`allow` holds a permission builder for every contract in `zodiac.config.ts`,
+by chain prefix and the name you gave it, typed after each contract's ABI:
+
+```ts
+import { allow, c } from '@zodiaceco/sdk'
+
+allow.eth.weth.deposit({ send: true })
+allow.eth.weth.withdraw(c.lte(10n ** 18n))
+```
+
+`zodiac pull-contracts` fetches the ABIs and records what the kit is built
+from in `.zodiac/`, so re-run it after changing the contracts. The kit is
+built on first use for the project the working directory is in.
+
 ### Describing what a role may do
 
 A Roles mod carries roles, and every role lists `permissions` — entries that
@@ -204,9 +230,8 @@ deployed, so a stored revision always goes through the current compilers
 instead of replaying a copy made when it was pushed.
 
 ```ts
+import { allow } from '@zodiaceco/sdk'
 import { swap, transfer, custom, defikit } from '@zodiaceco/sdk/actions'
-// `allow` is your project's generated permission kit — a global in template
-// projects, created by `zodiac pull-contracts`.
 
 const treasuryRoles = eth.roles['GG Treasury Roles']({
   nonce: 0n,
@@ -299,8 +324,8 @@ in the Zodiac app for the rest of your org:
 - **`vault: true`** on a Safe lists it under **Vaults**.
 - **`policy`** on a role lists it under **Policies**, labelled as given, so
   everyone in your org can see what it permits right in the app. A
-  `description` is optional. In a template project, export both from the
-  role's folder:
+  `description` is optional. In a project started with
+  `npm create @zodiaceco`, export both from the role's folder:
 
   ```ts
   // constellation/roles/treasury_ops/index.ts
@@ -363,19 +388,23 @@ Options:
   -h, --help           display help for command
 
 Commands:
+  create [directory]   Start a constellation project, like `npm create @zodiaceco`
   init                 Authorize this directory with a Zodiac org. Opens a browser to mint an API key and writes it to .env.
   pull-org             Fetch Zodiac users and accounts, generate TypeScript types
   pull-contracts       Fetch contract ABIs, generate typed permissions kit. Needs no API key (--module <file> to export the types instead of augmenting the global AllowKit)
   pull                 Fetch Zodiac org and contracts ABI, generate SDK functions
-  push [entrypoint]    Push the nodes an entrypoint exports and open them for review (--no-open to skip the browser, --source <url> to name where they are defined)
+  push [entrypoint]    Push the nodes an entrypoint exports and open them for review (--no-open to skip the browser, --source <url> to name where they are defined, --dry-run to print what would be pushed)
   help [command]       display help for command
 ```
 
 `zodiac push` imports the entrypoint (`constellation/index.ts` by default),
 pushes every named export as a node, and prints where each constellation can be
 reviewed. When Zodiac refuses a constellation, it prints what was refused and
-exits with code 1. A project whose entrypoint relies on globals it sets up
-itself runs that setup first and then calls the same command:
+exits with code 1. `--dry-run` prints the specification of each constellation
+instead of pushing it, and needs no API key.
+
+A project whose entrypoint relies on globals it sets up itself runs that setup
+first and then calls the same command:
 
 ```ts
 import './globals'
@@ -383,3 +412,7 @@ import { pushEntrypoint } from '@zodiaceco/sdk/cli/push'
 
 await pushEntrypoint({ entrypoint: process.argv[2] })
 ```
+
+The CLI runs on Node.js 22 or later and on Bun. It loads `zodiac.config.ts`
+and the entrypoint itself, so TypeScript and extensionless imports such as
+`./roles` work under either, with nothing else to install.

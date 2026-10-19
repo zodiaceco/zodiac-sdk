@@ -1,6 +1,7 @@
 import { Command } from 'commander'
 import { config as loadDotenv } from 'dotenv'
 import { checkForUpdate, ownVersion } from './checkForUpdate'
+import { create } from './commands/create'
 import { init } from './commands/init'
 import { loadConfig, loadProjectConfig } from './config'
 import { pullOrg } from './commands/pullOrg'
@@ -103,13 +104,17 @@ export const run = async (argv: string[] = process.argv) => {
     )
     .option('--no-open', 'do not open the review pages in a browser')
     .option(
+      '--dry-run',
+      'print what would be pushed instead of pushing it (needs no API key)'
+    )
+    .option(
       '--source <url>',
       'where the constellations are defined (default: ZODIAC_SOURCE, or the git repository the entrypoint is checked out from)'
     )
     .action(
       async (
         entrypoint: string | undefined,
-        opts: { open: boolean; source?: string },
+        opts: { open: boolean; source?: string; dryRun?: boolean },
         cmd
       ) => {
         await pushEntrypoint({
@@ -117,9 +122,25 @@ export const run = async (argv: string[] = process.argv) => {
           openInBrowser: opts.open,
           config: cmd.optsWithGlobals().config,
           source: opts.source,
+          dryRun: opts.dryRun,
         })
       }
     )
+
+  program
+    .command('create')
+    .description(
+      'Start a constellation project, like `npm create @zodiaceco` (`zodiac create --help` for its options)'
+    )
+    .argument('[directory]', 'where the project goes')
+    // Everything after `create` is for `@zodiaceco/create`, `--help` included:
+    // the values of its options too, which commander counts as arguments.
+    .allowUnknownOption()
+    .allowExcessArguments()
+    .helpOption(false)
+    .action(() => {
+      create(ownVersion(), argv.slice(argv.indexOf('create') + 1))
+    })
 
   program
     .command('init')

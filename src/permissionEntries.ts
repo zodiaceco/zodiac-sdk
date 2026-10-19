@@ -51,7 +51,9 @@ export const isDeFiKitEntry = (entry: PermissionEntry): entry is DeFiKitEntry =>
  * the roles node the entry ends up on. A transfer to a node on another chain
  * would permit sending funds to an address that may not exist there.
  */
-export const recipientChains = Symbol('recipientChains')
+// Registered, so a node marked by another copy of the SDK — the project's,
+// when the CLI runs from elsewhere — is still checked.
+export const recipientChains = Symbol.for('@zodiaceco/sdk:recipientChains')
 
 export const assertRecipientChains = (
   entry: PermissionEntry,

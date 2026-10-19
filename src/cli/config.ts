@@ -1,7 +1,8 @@
 import { config as loadDotenv } from 'dotenv'
 import { existsSync, writeFileSync } from 'node:fs'
-import { pathToFileURL } from 'url'
 import { dirname, resolve } from 'path'
+import { CONFIG_EXTENSIONS } from '../paths'
+import { loadModule } from './loadModule'
 import { findProjectRoot } from './projectRoot'
 
 export type Contracts = {
@@ -73,19 +74,6 @@ export const defineConfig = <const T extends DefineConfigInput>(
 ): T => config
 
 const CONFIG_BASENAME = 'zodiac.config'
-
-/**
- * Extensions probed (in priority order) when the user doesn't pass an
- * explicit `--config` path. Mirrors what vite / vitest / tailwind accept.
- */
-const CONFIG_EXTENSIONS = [
-  '.ts',
-  '.mts',
-  '.cts',
-  '.js',
-  '.mjs',
-  '.cjs',
-] as const
 
 const DEFAULT_CONFIG_PATH = `${CONFIG_BASENAME}.ts`
 
@@ -191,15 +179,12 @@ const readConfig = async (
     console.log(`✅ Created ${absolutePath}`)
   }
 
-  let mod: Record<string, unknown>
-  try {
-    mod = await import(pathToFileURL(absolutePath).href)
-  } catch (error: any) {
-    if (error?.code === 'ERR_MODULE_NOT_FOUND' || error?.code === 'ENOENT') {
-      throw new Error(`Config file not found: ${absolutePath}`)
-    }
-    throw error
+  // Checked up front: each runtime reports a missing module differently.
+  if (!existsSync(absolutePath)) {
+    throw new Error(`Config file not found: ${absolutePath}`)
   }
+
+  const mod = await loadModule(absolutePath)
 
   const config = (mod.default ?? mod.config) as ZodiacConfig | undefined
   if (!config) {
@@ -253,18 +238,4 @@ const resolveApiKey = async (
 const isApiKey = (value: string | undefined): value is `zodiac_${string}` =>
   value != null && value.startsWith('zodiac_')
 
-export const DEFAULT_ABIS_DIR = 'abis'
-
-/**
- * Resolves the absolute path to the ABIs directory. Only `rootDir` (and
- * optionally `abisDir`) are read, so the parameter is intentionally narrower
- * than `ResolvedConfig`: userland code can pass `{ ...config, rootDir }`
- * without first satisfying `apiKey` (normally supplied via the
- * `ZODIAC_API_KEY` env var at runtime).
- */
-export function resolveAbisDir(config: {
-  rootDir: string
-  abisDir?: string
-}): string {
-  return resolve(config.rootDir, config.abisDir ?? DEFAULT_ABIS_DIR)
-}
+export { DEFAULT_ABIS_DIR, resolveAbisDir } from '../paths'

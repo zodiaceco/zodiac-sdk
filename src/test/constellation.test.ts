@@ -1,4 +1,7 @@
 import { describe, it, expect } from 'bun:test'
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { constellation } from '../constellation'
 import * as codegen from './codegen.mock'
 
@@ -14,6 +17,23 @@ describe('constellation API', () => {
       expect(eth.roles).toBeDefined()
       expect(eth.delay).toBeDefined()
       expect(eth.user).toBeDefined()
+    })
+  })
+
+  describe('before `pull-org`', () => {
+    it('declares new nodes', () => {
+      const originalCwd = process.cwd()
+      process.chdir(mkdtempSync(join(tmpdir(), 'zodiac-no-codegen-')))
+
+      try {
+        const eth = constellation({ workspace: 'GG', label: 'l', chain: 1 })
+
+        expect(
+          eth.safe['New Safe']({ nonce: 0n, threshold: 1, owners: [] })
+        ).toMatchObject({ type: 'SAFE', label: 'New Safe' })
+      } finally {
+        process.chdir(originalCwd)
+      }
     })
   })
 

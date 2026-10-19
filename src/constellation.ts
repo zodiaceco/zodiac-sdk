@@ -139,6 +139,9 @@ export type NodeRef = Readonly<{
  * sent to the API. */
 type AddressOrRef = Address | NodeRef
 
+/** A role's members: addresses, users or nodes. */
+export type Members = readonly AddressOrRef[]
+
 type NodeBase = Readonly<{
   /** Human-readable identifier, unique within the constellation. */
   label: string
@@ -391,9 +394,19 @@ export type ConstellationMeta = {
   workspaceId: UUID
 }
 
+const EMPTY_CODEGEN: CodegenData = { users: {}, accounts: {} }
+
+// Until `zodiac pull-org` has run there is no codegen, and a constellation that
+// only declares new nodes can still be pushed. Naming an existing account then
+// reads as declaring a new one.
 function loadCodegen(): CodegenData {
   const require = createRequire(import.meta.url)
-  return require(resolveZodiacDir()) as CodegenData
+  try {
+    return require(resolveZodiacDir()) as CodegenData
+  } catch (error: any) {
+    if (error?.code === 'MODULE_NOT_FOUND') return EMPTY_CODEGEN
+    throw error
+  }
 }
 
 /**

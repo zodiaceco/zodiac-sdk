@@ -1,0 +1,38 @@
+{
+  "name": "@zodiaceco/create",
+  "version": "2.7.0",
+  "description": "Start a Zodiac constellation project: npm create @zodiaceco",
+  "author": "Zodiac Labs GmbH",
+  "license": "LGPL-3.0-only",
+  "homepage": "https://github.com/zodiaceco/zodiac-sdk/tree/main/create",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zodiaceco/zodiac-sdk.git",
+    "directory": "create"
+  },
+  "type": "module",
+  "bin": {
+    "create": "dist/index.mjs"
+  },
+  "files": [
+    "dist",
+    "templates",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "check:types": "tsc -p tsconfig.json",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.8.1"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.21",
+    "tsdown": "~0.21.9",
+    "typescript": "^5.9.2"
+  }
+}

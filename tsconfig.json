@@ -64,5 +64,7 @@
 
     /* Advanced Options */
     "forceConsistentCasingInFileNames": true /* Disallow inconsistently-cased references to the same file. */
-  }
+  },
+  // A package of its own, with its own tsconfig.
+  "exclude": ["node_modules", "dist", "create"]
 }

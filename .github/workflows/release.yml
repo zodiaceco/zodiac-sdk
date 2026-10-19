@@ -1,4 +1,4 @@
-name: Release package to npm
+name: Release packages to npm
 
 on:
   push:
@@ -14,28 +14,28 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
+      # Releases @zodiaceco/sdk and @zodiaceco/create (in create/) together, at
+      # the same version: see release-please-config.json.
       - uses: googleapis/release-please-action@v4
         id: release
-        with:
-          release-type: node
       - uses: actions/checkout@v4
         # ensure that a publication only occurs when a new release is created:
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ steps.release.outputs.releases_created == 'true' }}
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.12
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ steps.release.outputs.releases_created == 'true' }}
       - uses: actions/cache@v4
         with:
           path: node_modules
           key: ${{ runner.os }}-modules-${{ hashFiles('bun.lockb', 'bunfig.toml') }}
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ steps.release.outputs.releases_created == 'true' }}
       - name: Install dependencies
         run: bun install --frozen-lockfile
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ steps.release.outputs.releases_created == 'true' }}
       - name: Build package
         run: bun run build
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ steps.release.outputs.releases_created == 'true' }}
       # No registry-url here on purpose. It makes setup-node write
       # //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN} into .npmrc;
       # with no token that expands to empty, npm reads the line as "auth is
@@ -46,11 +46,21 @@ jobs:
         with:
           # 24.x ships npm 11.17.x; trusted publishing needs >= 11.5.1
           node-version: 24
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ steps.release.outputs.releases_created == 'true' }}
       # Authenticates via OIDC against the trusted publisher configured at
       # npmjs.com/package/@zodiaceco/sdk/access. No npm token involved; the
       # binding is to this repo + this workflow filename, so renaming this
       # file means updating that setting.
-      - name: Publish package to npm
+      - name: Publish @zodiaceco/sdk to npm
         run: npm publish --provenance --access public
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+      # Trusted publishing is configured per package, at
+      # npmjs.com/package/@zodiaceco/create/access for this one.
+      - name: Build @zodiaceco/create
+        run: bun install --frozen-lockfile && bun run build
+        working-directory: create
+        if: ${{ steps.release.outputs['create--release_created'] == 'true' }}
+      - name: Publish @zodiaceco/create to npm
+        run: npm publish --provenance --access public
+        working-directory: create
+        if: ${{ steps.release.outputs['create--release_created'] == 'true' }}

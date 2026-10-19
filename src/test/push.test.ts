@@ -1,7 +1,7 @@
 import { describe, it, expect, mock } from 'bun:test'
 import { c, encodeKey, Operator, ParameterType } from 'zodiac-roles-sdk'
 import { ApiRequestError } from '../api'
-import { ConstellationRejectedError, push } from '../push'
+import { ConstellationRejectedError, push, specify } from '../push'
 import { constellation } from '../constellation'
 import * as codegen from './codegen.mock'
 import * as treasury_ops from './policyRole.mock'
@@ -823,5 +823,22 @@ describe('push', () => {
         'A permission of role "ops" names its function by both `selector` and `signature`'
       )
     })
+  })
+})
+
+describe('specify', () => {
+  it('answers what push would apply, per constellation', async () => {
+    const eth = constellation(
+      { workspace: 'GG', label: 'test', chain: 1 },
+      { codegen }
+    )
+    const nodes = { dao: eth.safe['GG DAO'] }
+
+    const { api, lastPayload } = mockApi()
+    await push(nodes, { api })
+
+    expect(specify(nodes)).toEqual([
+      { workspaceId: expect.any(String), ...lastPayload() },
+    ])
   })
 })

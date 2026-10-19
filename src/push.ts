@@ -59,31 +59,10 @@ export async function push(
   opts?: PushOpts
 ): Promise<ApplyConstellationResult[]> {
   const api = opts?.api ?? new ApiClient({ apiKey: opts?.apiKey })
-  const refs = deriveRefs(nodes)
-
-  // Group nodes by constellation (multiple constellations can be applied with a single call)
-  const groups = new Map<
-    string,
-    { meta: ConstellationMeta; nodes: ConstellationNodeInternal[] }
-  >()
-
-  for (const node of refs.byIdentity.keys()) {
-    const meta = node._constellation
-    invariant(
-      meta,
-      `Node "${node.label}" is not associated with a constellation`
-    )
-    const key = `${meta.workspaceId}:${meta.chain}:${meta.label}`
-    let group = groups.get(key)
-    if (!group) {
-      group = { meta, nodes: [] }
-      groups.set(key, group)
-    }
-    group.nodes.push(node)
-  }
+  const { refs, groups } = groupNodes(nodes)
 
   const results: ApplyConstellationResult[] = []
-  for (const { meta, nodes: groupNodes } of groups.values()) {
+  for (const { meta, nodes: groupNodes } of groups) {
     const specification = groupNodes.map((n) => nodeToSpec(n, refs))
     const result = await api
       .applyConstellation(meta.workspaceId, {
@@ -109,6 +88,56 @@ export async function push(
   }
 
   return results
+}
+
+/** A constellation as `push()` applies it, for {@link specify}. */
+export type ConstellationSpecification = {
+  workspaceId: string
+} & ApplyConstellationPayload
+
+/**
+ * What {@link push} would apply, one specification per constellation, without
+ * sending anything — so it needs no API key.
+ */
+export function specify(
+  nodes: ConstellationNode[] | { [key: string]: ConstellationNode }
+): ConstellationSpecification[] {
+  const { refs, groups } = groupNodes(nodes)
+
+  return groups.map(({ meta, nodes }) => ({
+    workspaceId: meta.workspaceId,
+    label: meta.label,
+    chain: meta.chain,
+    specification: nodes.map((node) => nodeToSpec(node, refs)),
+  }))
+}
+
+// Nodes by the constellation they belong to: one call can apply several.
+function groupNodes(
+  nodes: ConstellationNode[] | { [key: string]: ConstellationNode }
+) {
+  const refs = deriveRefs(nodes)
+  const groups = new Map<
+    string,
+    { meta: ConstellationMeta; nodes: ConstellationNodeInternal[] }
+  >()
+
+  for (const node of refs.byIdentity.keys()) {
+    const meta = node._constellation
+    invariant(
+      meta,
+      `Node "${node.label}" is not associated with a constellation`
+    )
+    const key = `${meta.workspaceId}:${meta.chain}:${meta.label}`
+    let group = groups.get(key)
+    if (!group) {
+      group = { meta, nodes: [] }
+      groups.set(key, group)
+    }
+    group.nodes.push(node)
+  }
+
+  return { refs, groups: [...groups.values()] }
 }
 
 /**
