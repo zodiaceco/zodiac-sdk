@@ -299,45 +299,31 @@ describe('push', () => {
     )
   })
 
-  // Each constellation is sent as a specification of its own, and a `$ref`
-  // only resolves within the one it is in.
-  it('refuses a reference to a node of another constellation', async () => {
+  // Zodiac refuses what it cannot hold — a reference to another
+  // constellation's node, a workspace the key's organization lacks — and the
+  // refusal reads in its words, not as a failed request.
+  it('reports what Zodiac refuses without issues in its words', async () => {
     const eth = setup()
-    const gno = constellation(
-      { workspace: 'Second Space', label: 'ops', chain: 100 },
-      { codegen }
-    )
-    const treasury = eth.safe['New Treasury']({
-      nonce: 0n,
-      threshold: 1,
-      owners: ['0x0000000000000000000000000000000000000001'],
-    })
-    const child = gno.safe['Child']({
-      nonce: 0n,
-      threshold: 1,
-      owners: [treasury],
-    })
+    const api = {
+      applyConstellation: mock(() =>
+        Promise.reject(
+          new ApiRequestError('Your organization has no workspace like that', {
+            status: 404,
+            statusText: 'Not Found',
+          })
+        )
+      ),
+    } as any
 
-    const { api } = mockApi()
-    await expect(push({ treasury, child }, { api })).rejects.toThrow(
-      'Node "Child" of constellation "ops" (workspace "Second Space", chain 100) references "New Treasury" of constellation "test" (workspace "GG", chain 1). A node can only reference nodes of its own constellation'
-    )
-    expect(() => specify({ treasury, child })).toThrow(
-      'A node can only reference nodes of its own constellation'
-    )
-  })
-
-  it('refuses a reference across constellations of one workspace and chain', () => {
-    const eth = setup()
-    const other = constellation(
-      { workspace: 'GG', label: 'other', chain: 1 },
-      { codegen }
-    )
-    const dao = eth.safe['GG DAO']
-    const roles = other.roles['New Roles']({ nonce: 0n, target: dao })
-
-    expect(() => specify({ dao, roles })).toThrow(
-      'A node can only reference nodes of its own constellation'
+    await expect(push([eth.safe['GG DAO']], { api })).rejects.toThrow(
+      new ConstellationRejectedError(
+        'test',
+        new ApiRequestError('Your organization has no workspace like that', {
+          status: 404,
+          statusText: 'Not Found',
+        }),
+        () => ''
+      )
     )
   })
 

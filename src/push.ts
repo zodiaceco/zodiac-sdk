@@ -72,7 +72,13 @@ export async function push(
         specification,
       })
       .catch((error: unknown) => {
-        if (error instanceof ApiRequestError && error.issues.length > 0) {
+        // Whatever Zodiac refuses — a node, a reference, the workspace — is
+        // said in its own words rather than as a failed request.
+        if (
+          error instanceof ApiRequestError &&
+          error.status >= 400 &&
+          error.status < 500
+        ) {
           throw new ConstellationRejectedError(meta.label, error, (index) => {
             const node = groupNodes[index]
 
@@ -164,12 +170,9 @@ export class ConstellationRejectedError extends Error {
       }
     })
 
-    super(
-      formatIssues(
-        `Zodiac refused the constellation "${label}". ${error.reason}`,
-        issues
-      )
-    )
+    const headline = `Zodiac refused the constellation "${label}". ${error.reason}`
+
+    super(issues.length > 0 ? formatIssues(headline, issues) : headline)
 
     this.name = 'ConstellationRejectedError'
     this.issues = issues
@@ -270,12 +273,12 @@ function nodeToSpec(
     if (node.type === 'ROLES' && key === 'roles' && value != null) {
       spec.roles = describeRoles(
         value as Record<string, RoleDef | null>,
-        node,
+        node.chain,
         refs
       )
       continue
     }
-    spec[key] = resolveRefs(value, refs, node)
+    spec[key] = resolveRefs(value, refs)
   }
 
   spec.ref = refs.byIdentity.get(node)
@@ -295,11 +298,9 @@ function nodeToSpec(
  */
 function describeRoles(
   roles: Record<string, RoleDef | null>,
-  node: ConstellationNodeInternal,
+  chain: ChainId,
   refs: RefsIndex
 ): Record<string, unknown> {
-  const { chain } = node
-
   return Object.fromEntries(
     Object.entries(roles).map(([key, def]) => {
       if (def == null) {
@@ -310,13 +311,13 @@ function describeRoles(
         key,
         {
           key,
-          members: resolveRefs(def.members, refs, node),
+          members: resolveRefs(def.members, refs),
           ...(def.policy != null && { policy: def.policy }),
           ...(def.description != null && { description: def.description }),
           permissions: def.permissions.map((entry) => {
             assertRecipientChains(entry, chain)
 
-            return resolveRefs(describeEntry(entry, key, chain), refs, node)
+            return resolveRefs(describeEntry(entry, key, chain), refs)
           }),
         },
       ] as const
@@ -397,23 +398,8 @@ function settlePermission(permission: ConstellationPermission, role: string) {
 
 const PLACEHOLDER_TARGET = '0x0000000000000000000000000000000000000000'
 
-/**
- * Swaps each node in `value` for a reference to it. A reference only resolves
- * within the specification it is sent in, so `from` — the node `value` belongs
- * to — may only name nodes of its own constellation.
- */
-function resolveRefs(
-  value: unknown,
-  refs: RefsIndex,
-  from: ConstellationNodeInternal
-): unknown {
+function resolveRefs(value: unknown, refs: RefsIndex): unknown {
   if (isConstellationNode(value)) {
-    invariant(
-      constellationKey(value._constellation) ===
-        constellationKey(from._constellation),
-      `Node "${from.label}" of ${describeConstellation(from._constellation)} references "${value.label}" of ${describeConstellation(value._constellation)}. ` +
-        `A node can only reference nodes of its own constellation: name the account through that constellation, or by its address.`
-    )
     const ref = refs.byIdentity.get(value) ?? refs.byLabel.get(labelKey(value))
     invariant(
       ref != null,
@@ -423,13 +409,13 @@ function resolveRefs(
   }
 
   if (Array.isArray(value)) {
-    return value.map((v) => resolveRefs(v, refs, from))
+    return value.map((v) => resolveRefs(v, refs))
   }
 
   if (typeof value === 'object' && value !== null) {
     const resolved: Record<string, unknown> = {}
     for (const [k, v] of Object.entries(value)) {
-      resolved[k] = resolveRefs(v, refs, from)
+      resolved[k] = resolveRefs(v, refs)
     }
     return resolved
   }
@@ -475,12 +461,4 @@ function isConstellationNode(
     )
   }
   return false
-}
-
-function describeConstellation({
-  label,
-  chain,
-  workspace,
-}: ConstellationMeta): string {
-  return `constellation "${label}" (${workspace == null ? '' : `workspace "${workspace}", `}chain ${chain})`
 }

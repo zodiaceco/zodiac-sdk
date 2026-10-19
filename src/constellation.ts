@@ -392,8 +392,6 @@ export type ConstellationMeta = {
   label: string
   chain: ChainId
   workspaceId: UUID
-  /** The workspace's name, as the constellation was given it. */
-  workspace?: string
 }
 
 const EMPTY_CODEGEN: CodegenData = { users: {}, accounts: {} }
@@ -477,7 +475,6 @@ export function constellation<
     label: opts.label,
     chain: opts.chain,
     workspaceId: (ws?.workspaceId ?? '') as UUID,
-    workspace: opts.workspace,
   }
 
   function makeNodeRef(

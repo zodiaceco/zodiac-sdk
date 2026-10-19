@@ -399,6 +399,8 @@ Commands:
   help [command]       display help for command
 ```
 
+Errors print as a message. Set `ZODIAC_DEBUG=1` to see where they were thrown.
+
 `zodiac push` imports the entrypoint (`constellation/index.ts` by default),
 pushes every named export as a node, and prints where each constellation can be
 reviewed. When Zodiac refuses a constellation, it prints what was refused and

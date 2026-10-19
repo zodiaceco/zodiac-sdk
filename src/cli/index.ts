@@ -8,7 +8,13 @@ run().then(
     process.exit(process.exitCode ?? 0)
   },
   (error: unknown) => {
-    if (error) console.error(error)
+    // A message is written for whoever runs the command; the stack only helps
+    // when debugging the CLI itself.
+    if (error instanceof Error && process.env.ZODIAC_DEBUG == null) {
+      console.error(error.message)
+    } else if (error) {
+      console.error(error)
+    }
     process.exit(1)
   }
 )
