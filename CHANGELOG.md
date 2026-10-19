@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.8.1](https://github.com/zodiaceco/zodiac-sdk/compare/v2.8.0...v2.8.1) (2026-10-19)
+
+
+### Bug Fixes
+
+* surface Zodiac's refusals of a push, and keep label references within their constellation ([#88](https://github.com/zodiaceco/zodiac-sdk/issues/88)) ([ebf8b0a](https://github.com/zodiaceco/zodiac-sdk/commit/ebf8b0ada560cd4a8d6aae6c567402c398919d83))
+
 ## [2.8.0](https://github.com/zodiaceco/zodiac-sdk/compare/v2.7.0...v2.8.0) (2026-10-19)
 
 
