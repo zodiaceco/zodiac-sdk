@@ -72,7 +72,13 @@ export async function push(
         specification,
       })
       .catch((error: unknown) => {
-        if (error instanceof ApiRequestError && error.issues.length > 0) {
+        // Whatever Zodiac refuses — a node, a reference, the workspace — is
+        // said in its own words rather than as a failed request.
+        if (
+          error instanceof ApiRequestError &&
+          error.status >= 400 &&
+          error.status < 500
+        ) {
           throw new ConstellationRejectedError(meta.label, error, (index) => {
             const node = groupNodes[index]
 
@@ -128,7 +134,7 @@ function groupNodes(
       meta,
       `Node "${node.label}" is not associated with a constellation`
     )
-    const key = `${meta.workspaceId}:${meta.chain}:${meta.label}`
+    const key = constellationKey(meta)
     let group = groups.get(key)
     if (!group) {
       group = { meta, nodes: [] }
@@ -164,12 +170,9 @@ export class ConstellationRejectedError extends Error {
       }
     })
 
-    super(
-      formatIssues(
-        `Zodiac refused the constellation "${label}". ${error.reason}`,
-        issues
-      )
-    )
+    const headline = `Zodiac refused the constellation "${label}". ${error.reason}`
+
+    super(issues.length > 0 ? formatIssues(headline, issues) : headline)
 
     this.name = 'ConstellationRejectedError'
     this.issues = issues
@@ -189,8 +192,12 @@ type RefsIndex = {
   byLabel: Map<string, string>
 }
 
+function constellationKey(meta: ConstellationMeta): string {
+  return `${meta.workspaceId}:${meta.chain}:${meta.label}`
+}
+
 function labelKey(node: ConstellationNodeInternal): string {
-  return `${node._constellation.workspaceId}:${node.type}:${node.label}`
+  return `${constellationKey(node._constellation)}:${node.type}:${node.label}`
 }
 
 function deriveRefs(
@@ -396,7 +403,7 @@ function resolveRefs(value: unknown, refs: RefsIndex): unknown {
     const ref = refs.byIdentity.get(value) ?? refs.byLabel.get(labelKey(value))
     invariant(
       ref != null,
-      `Node "${value.label}" is referenced but not included in the push() call`
+      `Node "${value.label}" is referenced but not included in the push() call. You might be missing an export statement.`
     )
     return `$${ref}`
   }

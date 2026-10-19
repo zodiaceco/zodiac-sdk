@@ -20,6 +20,21 @@ describe('constellation API', () => {
     })
   })
 
+  describe('workspace', () => {
+    // `zodiac push` runs without type-checking, so a workspace the pulled org
+    // doesn't have would otherwise be pushed as no workspace at all.
+    it('throws for a workspace the org does not have', () => {
+      expect(() =>
+        constellation(
+          { workspace: 'Gg' as 'GG', label: 'l', chain: 1 },
+          { codegen }
+        )
+      ).toThrow(
+        'Unknown workspace "Gg". Your org has "GG", "Second Space". If you created it since, run `zodiac pull-org`.'
+      )
+    })
+  })
+
   describe('before `pull-org`', () => {
     it('declares new nodes', () => {
       const originalCwd = process.cwd()

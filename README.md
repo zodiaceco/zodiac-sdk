@@ -93,6 +93,8 @@ const eth = constellation({
 })
 ```
 
+An entrypoint can export nodes of several constellations, for other chains or workspaces. Each is pushed as a constellation of its own, and `zodiac push` opens one review page per constellation. A node can only reference nodes of its own constellation: to name an account another constellation declares, use its address.
+
 ### Referencing existing accounts
 
 Bracket access gives you existing Safes, Roles mods and Delay mods from the selected workspace and chain — both **vault accounts** (manually-promoted entries surfaced in the workspace UI) and any **constellation accounts** previously created by a `push()`. The codegen records them under the same `accounts` map, marked with a `vault` flag for the subset that are also workspace vaults. Names auto-complete from the codegen output.

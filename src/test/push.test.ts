@@ -295,8 +295,57 @@ describe('push', () => {
 
     const { api } = mockApi()
     expect(push([roles], { api })).rejects.toThrow(
-      'Node "GG DAO" is referenced but not included in the push() call'
+      'Node "GG DAO" is referenced but not included in the push() call. You might be missing an export statement.'
     )
+  })
+
+  // Zodiac refuses what it cannot hold — a reference to another
+  // constellation's node, a workspace the key's organization lacks — and the
+  // refusal reads in its words, not as a failed request.
+  it('reports what Zodiac refuses without issues in its words', async () => {
+    const eth = setup()
+    const api = {
+      applyConstellation: mock(() =>
+        Promise.reject(
+          new ApiRequestError('Your organization has no workspace like that', {
+            status: 404,
+            statusText: 'Not Found',
+          })
+        )
+      ),
+    } as any
+
+    await expect(push([eth.safe['GG DAO']], { api })).rejects.toThrow(
+      new ConstellationRejectedError(
+        'test',
+        new ApiRequestError('Your organization has no workspace like that', {
+          status: 404,
+          statusText: 'Not Found',
+        }),
+        () => ''
+      )
+    )
+  })
+
+  // Bracket access hands out a fresh node, so references also resolve by
+  // label. Labels repeat across chains, and must not resolve across them.
+  it('resolves a label within its own constellation only', () => {
+    const eth = setup()
+    const gno = constellation(
+      { workspace: 'GG', label: 'test', chain: 100 },
+      { codegen }
+    )
+    const ethSafe = eth.safe['Same']({ nonce: 0n, threshold: 1, owners: [] })
+    const gnoSafe = gno.safe['Same']({ nonce: 0n, threshold: 1, owners: [] })
+    const gnoRoles = gno.roles['Roles']({
+      nonce: 0n,
+      target: gno.safe['Same'],
+    })
+
+    const [onGnosis] = specify({ gnoSafe, ethSafe, gnoRoles })
+    expect(
+      onGnosis!.specification.find((n) => n.ref === 'gnoRoles')
+    ).toMatchObject({ target: '$gnoSafe' })
   })
 
   it('uses array index as ref for array input', async () => {
