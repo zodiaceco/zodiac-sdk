@@ -128,7 +128,7 @@ function groupNodes(
       meta,
       `Node "${node.label}" is not associated with a constellation`
     )
-    const key = `${meta.workspaceId}:${meta.chain}:${meta.label}`
+    const key = constellationKey(meta)
     let group = groups.get(key)
     if (!group) {
       group = { meta, nodes: [] }
@@ -189,8 +189,12 @@ type RefsIndex = {
   byLabel: Map<string, string>
 }
 
+function constellationKey(meta: ConstellationMeta): string {
+  return `${meta.workspaceId}:${meta.chain}:${meta.label}`
+}
+
 function labelKey(node: ConstellationNodeInternal): string {
-  return `${node._constellation.workspaceId}:${node.type}:${node.label}`
+  return `${constellationKey(node._constellation)}:${node.type}:${node.label}`
 }
 
 function deriveRefs(
@@ -266,12 +270,12 @@ function nodeToSpec(
     if (node.type === 'ROLES' && key === 'roles' && value != null) {
       spec.roles = describeRoles(
         value as Record<string, RoleDef | null>,
-        node.chain,
+        node,
         refs
       )
       continue
     }
-    spec[key] = resolveRefs(value, refs)
+    spec[key] = resolveRefs(value, refs, node)
   }
 
   spec.ref = refs.byIdentity.get(node)
@@ -291,9 +295,11 @@ function nodeToSpec(
  */
 function describeRoles(
   roles: Record<string, RoleDef | null>,
-  chain: ChainId,
+  node: ConstellationNodeInternal,
   refs: RefsIndex
 ): Record<string, unknown> {
+  const { chain } = node
+
   return Object.fromEntries(
     Object.entries(roles).map(([key, def]) => {
       if (def == null) {
@@ -304,13 +310,13 @@ function describeRoles(
         key,
         {
           key,
-          members: resolveRefs(def.members, refs),
+          members: resolveRefs(def.members, refs, node),
           ...(def.policy != null && { policy: def.policy }),
           ...(def.description != null && { description: def.description }),
           permissions: def.permissions.map((entry) => {
             assertRecipientChains(entry, chain)
 
-            return resolveRefs(describeEntry(entry, key, chain), refs)
+            return resolveRefs(describeEntry(entry, key, chain), refs, node)
           }),
         },
       ] as const
@@ -391,24 +397,39 @@ function settlePermission(permission: ConstellationPermission, role: string) {
 
 const PLACEHOLDER_TARGET = '0x0000000000000000000000000000000000000000'
 
-function resolveRefs(value: unknown, refs: RefsIndex): unknown {
+/**
+ * Swaps each node in `value` for a reference to it. A reference only resolves
+ * within the specification it is sent in, so `from` — the node `value` belongs
+ * to — may only name nodes of its own constellation.
+ */
+function resolveRefs(
+  value: unknown,
+  refs: RefsIndex,
+  from: ConstellationNodeInternal
+): unknown {
   if (isConstellationNode(value)) {
+    invariant(
+      constellationKey(value._constellation) ===
+        constellationKey(from._constellation),
+      `Node "${from.label}" of ${describeConstellation(from._constellation)} references "${value.label}" of ${describeConstellation(value._constellation)}. ` +
+        `A node can only reference nodes of its own constellation: name the account through that constellation, or by its address.`
+    )
     const ref = refs.byIdentity.get(value) ?? refs.byLabel.get(labelKey(value))
     invariant(
       ref != null,
-      `Node "${value.label}" is referenced but not included in the push() call`
+      `Node "${value.label}" is referenced but not included in the push() call. You might be missing an export statement.`
     )
     return `$${ref}`
   }
 
   if (Array.isArray(value)) {
-    return value.map((v) => resolveRefs(v, refs))
+    return value.map((v) => resolveRefs(v, refs, from))
   }
 
   if (typeof value === 'object' && value !== null) {
     const resolved: Record<string, unknown> = {}
     for (const [k, v] of Object.entries(value)) {
-      resolved[k] = resolveRefs(v, refs)
+      resolved[k] = resolveRefs(v, refs, from)
     }
     return resolved
   }
@@ -454,4 +475,12 @@ function isConstellationNode(
     )
   }
   return false
+}
+
+function describeConstellation({
+  label,
+  chain,
+  workspace,
+}: ConstellationMeta): string {
+  return `constellation "${label}" (${workspace == null ? '' : `workspace "${workspace}", `}chain ${chain})`
 }

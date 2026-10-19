@@ -365,8 +365,9 @@ type EntityAccessor<
 }
 
 type UserAccessor<C extends CodegenData, Ch extends number> = {
-  readonly [K in keyof C['users'] &
-    string]: C['users'][K]['personalSafes'][Ch]['address']
+  readonly [
+    K in keyof C['users'] & string
+  ]: C['users'][K]['personalSafes'][Ch]['address']
 }
 
 type ConstellationResult<
@@ -392,6 +393,8 @@ export type ConstellationMeta = {
   label: string
   chain: ChainId
   workspaceId: UUID
+  /** The workspace's name, as the constellation was given it. */
+  workspace?: string
 }
 
 const EMPTY_CODEGEN: CodegenData = { users: {}, accounts: {} }
@@ -440,6 +443,16 @@ export function constellation<
   const codegen: CodegenData = internal?.codegen ?? loadCodegen()
 
   const ws = codegen.accounts[opts.workspace]
+  // Without codegen nothing is known yet, and only new nodes can be declared.
+  // With it, a workspace it lacks is a typo or one created since the pull:
+  // pushing would send no workspace at all.
+  const workspaces = Object.keys(codegen.accounts)
+  if (ws == null && workspaces.length > 0) {
+    throw new Error(
+      `Unknown workspace "${opts.workspace}". Your org has ${workspaces.map((name) => `"${name}"`).join(', ')}. ` +
+        'If you created it since, run `zodiac pull-org`.'
+    )
+  }
   const safesByLabel: Record<string, Account> = {}
   const rolesByLabel: Record<string, Account> = {}
   const delaysByLabel: Record<string, Account> = {}
@@ -465,6 +478,7 @@ export function constellation<
     label: opts.label,
     chain: opts.chain,
     workspaceId: (ws?.workspaceId ?? '') as UUID,
+    workspace: opts.workspace,
   }
 
   function makeNodeRef(

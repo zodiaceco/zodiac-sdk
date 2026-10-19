@@ -295,8 +295,71 @@ describe('push', () => {
 
     const { api } = mockApi()
     expect(push([roles], { api })).rejects.toThrow(
-      'Node "GG DAO" is referenced but not included in the push() call'
+      'Node "GG DAO" is referenced but not included in the push() call. You might be missing an export statement.'
     )
+  })
+
+  // Each constellation is sent as a specification of its own, and a `$ref`
+  // only resolves within the one it is in.
+  it('refuses a reference to a node of another constellation', async () => {
+    const eth = setup()
+    const gno = constellation(
+      { workspace: 'Second Space', label: 'ops', chain: 100 },
+      { codegen }
+    )
+    const treasury = eth.safe['New Treasury']({
+      nonce: 0n,
+      threshold: 1,
+      owners: ['0x0000000000000000000000000000000000000001'],
+    })
+    const child = gno.safe['Child']({
+      nonce: 0n,
+      threshold: 1,
+      owners: [treasury],
+    })
+
+    const { api } = mockApi()
+    await expect(push({ treasury, child }, { api })).rejects.toThrow(
+      'Node "Child" of constellation "ops" (workspace "Second Space", chain 100) references "New Treasury" of constellation "test" (workspace "GG", chain 1). A node can only reference nodes of its own constellation'
+    )
+    expect(() => specify({ treasury, child })).toThrow(
+      'A node can only reference nodes of its own constellation'
+    )
+  })
+
+  it('refuses a reference across constellations of one workspace and chain', () => {
+    const eth = setup()
+    const other = constellation(
+      { workspace: 'GG', label: 'other', chain: 1 },
+      { codegen }
+    )
+    const dao = eth.safe['GG DAO']
+    const roles = other.roles['New Roles']({ nonce: 0n, target: dao })
+
+    expect(() => specify({ dao, roles })).toThrow(
+      'A node can only reference nodes of its own constellation'
+    )
+  })
+
+  // Bracket access hands out a fresh node, so references also resolve by
+  // label. Labels repeat across chains, and must not resolve across them.
+  it('resolves a label within its own constellation only', () => {
+    const eth = setup()
+    const gno = constellation(
+      { workspace: 'GG', label: 'test', chain: 100 },
+      { codegen }
+    )
+    const ethSafe = eth.safe['Same']({ nonce: 0n, threshold: 1, owners: [] })
+    const gnoSafe = gno.safe['Same']({ nonce: 0n, threshold: 1, owners: [] })
+    const gnoRoles = gno.roles['Roles']({
+      nonce: 0n,
+      target: gno.safe['Same'],
+    })
+
+    const [onGnosis] = specify({ gnoSafe, ethSafe, gnoRoles })
+    expect(
+      onGnosis!.specification.find((n) => n.ref === 'gnoRoles')
+    ).toMatchObject({ target: '$gnoSafe' })
   })
 
   it('uses array index as ref for array input', async () => {
