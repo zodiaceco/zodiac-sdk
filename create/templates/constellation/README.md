@@ -251,6 +251,34 @@ allow.eth.susds["deposit(uint256,address)"](
 );
 ```
 
+### Showing Safes and roles in the Zodiac app
+
+A constellation deploys everything it describes, but the Zodiac app only lists what you mark for the rest of your org.
+
+**Vaults.** Add `vault: true` to a Safe to list it under **Vaults**. It's named by its label, the key in `eth.safe["Treasury"]`:
+
+```ts
+export const treasury = eth.safe["Treasury"]({
+  nonce: 0n,
+  threshold: 1,
+  owners: ["0x…"],
+  modules: [eth.roles["Treasury Roles"]],
+  vault: true,
+});
+```
+
+**Policies.** Export `policy` from a role's folder to list the role under **Policies**, so everyone in your org can see what it permits. The value is the policy's name; a `description` is optional:
+
+```ts
+// constellation/roles/treasury_ops/index.ts
+export { default as members } from "./members";
+export { default as permissions } from "./permissions";
+export const policy = "Treasury Ops";
+export const description = "Day-to-day treasury operations";
+```
+
+Neither reaches the chain. The policy's identity is the role key (`treasury_ops`), not its name, so renaming it changes nothing onchain. Every Roles mod that has a role with the same key carries the same policy: each of them has to give it the same name, description, members and permissions, and no two of them may act for the same Safe.
+
 ## Commands
 
 | Command                  | What it does                                                                                                                    |
