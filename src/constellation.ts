@@ -365,9 +365,8 @@ type EntityAccessor<
 }
 
 type UserAccessor<C extends CodegenData, Ch extends number> = {
-  readonly [
-    K in keyof C['users'] & string
-  ]: C['users'][K]['personalSafes'][Ch]['address']
+  readonly [K in keyof C['users'] &
+    string]: C['users'][K]['personalSafes'][Ch]['address']
 }
 
 type ConstellationResult<
