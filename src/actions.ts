@@ -1,5 +1,6 @@
 import type { Address, ChainId } from '@zodiaceco/api-types'
 import type { allow as ethereumKit } from 'defi-kit/eth'
+import type { NodeRef } from './constellation'
 import { recipientChains } from './permissionEntries'
 import type {
   AllowanceKey,
@@ -62,7 +63,7 @@ export const transfer = ({
     action: {
       type: 'transfer',
       tokens: [...tokens],
-      to: to.map(toAddress),
+      to: to.map(toRecipient),
       ...(bridges.length > 0 && { bridge: bridges }),
       ...(allowance != null && { allowance: allowanceKey(allowance) }),
     },
@@ -135,8 +136,31 @@ export const defikit: DeFiKit = new Proxy({} as DeFiKit, {
 const allowanceKey = (allowance: AllowanceSpec | AllowanceKey) =>
   typeof allowance === 'string' ? allowance : allowance.key
 
-const toAddress = (recipient: Recipient): Address =>
-  typeof recipient === 'string' ? recipient : recipient.address
+/**
+ * A node that already has an address stands for it. One that has none yet — a
+ * Safe created in the same deployment — stays a node, which `push()` sends as
+ * a reference and Zodiac substitutes once the address is derived at deploy.
+ */
+const toRecipient = (recipient: Recipient): Address | NodeRef =>
+  typeof recipient === 'string' || !('address' in recipient)
+    ? recipient
+    : recipient.address
+
+/**
+ * A bridge recipient lives on another chain, so in another constellation that
+ * this one cannot reference: it has to exist before it can be named.
+ */
+const toBridgeAddress = (recipient: Recipient): Address => {
+  const address = toRecipient(recipient)
+
+  if (typeof address !== 'string') {
+    throw new Error(
+      `A bridge recipient has to exist already, but "${address.label}" has no address yet. Deploy it first.`
+    )
+  }
+
+  return address
+}
 
 /**
  * A node knows the chain it lives on, so a bridge target written with nodes
@@ -146,7 +170,7 @@ const toAddress = (recipient: Recipient): Address =>
  */
 const toBridgeTarget = ({ chain, to, receive }: BridgeTarget) => ({
   chain: destinationChain(chain, to),
-  to: to.map(toAddress),
+  to: to.map(toBridgeAddress),
   receive: [...receive],
 })
 
@@ -218,8 +242,8 @@ type TransferParams = {
   /** Tokens the role may transfer. Use the zero address for the native token. */
   tokens: readonly Address[]
   /** Addresses the role may transfer to on the role's own chain. A node stands
-   * for its address, so only nodes that already have one — an account from your
-   * codegen, or one bound by address — can be named here. */
+   * for its address. One created in the same deployment has none yet, and is
+   * sent as a reference instead, so it has to be part of the `push()`. */
   to?: readonly Recipient[]
   /** Destinations on other chains, bridged over Across. */
   bridge?: readonly BridgeTarget[]
@@ -234,15 +258,18 @@ type CustomParams = {
   permissions: readonly ConstellationPermission[]
 }
 
-/** An address, or a node that already knows the address it lives at. */
+/** An address, or a node: one that knows the address it lives at, or one
+ * that only gets an address when it is deployed. */
 type Recipient =
   | Address
   | { readonly address: Address; readonly chain?: ChainId }
+  | NodeRef
 
 type BridgeTarget = {
   /** The destination chain. Inferred from the recipients when they are nodes. */
   chain?: ChainId
-  /** Addresses the role may bridge to on the destination chain. */
+  /** Addresses the role may bridge to on the destination chain. A node has
+   * to exist already: one on another chain cannot be referenced. */
   to: readonly Recipient[]
   /** Tokens the role may receive on the destination chain. */
   receive: readonly Address[]
