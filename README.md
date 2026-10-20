@@ -119,7 +119,7 @@ const ggDaoOverridden = eth.safe['GG DAO']({ threshold: 5 })
 
 ### Creating new accounts
 
-Use bracket access with a new label to create new nodes. Every mandatory field (`nonce`, `threshold`, `owners` for Safes; `nonce` for Roles mods; `nonce`, `cooldown`, `expiration` for Delay mods) must be supplied explicitly — the SDK does not inject any runtime defaults. The type system surfaces a missing field as a compile-time error so you can't ship an incomplete spec.
+Use bracket access with a new label to create new nodes. Every mandatory field (`nonce`, `threshold`, `owners` for Safes; `nonce` for Roles mods; `nonce`, `cooldown`, `expiration` for Delay mods) must be supplied explicitly. The only thing the SDK fills in is the `owner` and `avatar` of a new Roles or Delay mod, which default to its `target`. The type system surfaces a missing field as a compile-time error so you can't ship an incomplete spec.
 
 ```ts
 // New Safe — nonce, threshold, owners are required

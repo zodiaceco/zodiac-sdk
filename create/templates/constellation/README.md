@@ -83,7 +83,7 @@ export const backendSafe = eth.safe["Backend Safe"]({
 });
 ```
 
-For Safes the required fields are `nonce`, `threshold`, `owners`. For Roles mods, `nonce` (plus `owner`, `target`, `avatar` if you want anything other than the wired-up defaults). The SDK injects no runtime defaults — missing required fields surface as TypeScript errors.
+For Safes the required fields are `nonce`, `threshold`, `owners`. For Roles mods, `nonce` and `target`; `owner` and `avatar` default to `target`. Missing required fields surface as TypeScript errors.
 
 #### Binding to an existing Roles mod by address
 

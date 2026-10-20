@@ -507,16 +507,19 @@ export function constellation<
         // a label. The label sent in the push spec should be the clean
         // original, so prefer `existing.label` when it's available.
         const specLabel: string = existing?.label ?? name
-        const fn = (overrides?: Record<string, any>) =>
-          makeNodeRef(
+        const fn = (overrides?: Record<string, any>) => {
+          const declared = withModifierDefaults(type, existing, overrides ?? {})
+
+          return makeNodeRef(
             {
               type,
               ...(existing || {}),
-              ...overrides,
+              ...declared,
               label: specLabel,
             },
-            Object.keys(overrides ?? {})
+            Object.keys(declared)
           )
+        }
         // Bare access — `eth.safe['Treasury']` rather than a call — declares
         // nothing. It reads as the account it names, and pushes as a reference.
         Object.assign(fn, {
@@ -531,6 +534,35 @@ export function constellation<
         return fn
       },
     })
+  }
+
+  /**
+   * A new modifier acts for and is owned by the account it targets unless it
+   * says otherwise. Only a creation gets these: a modifier that exists, or is
+   * bound by address, is being updated, and filling them in would declare a
+   * change nobody wrote.
+   */
+  function withModifierDefaults(
+    type: string,
+    existing: Record<string, any> | undefined,
+    declared: Record<string, any>
+  ): Record<string, any> {
+    const isModifier = type === 'ROLES' || type === 'DELAY'
+
+    if (
+      !isModifier ||
+      existing != null ||
+      declared.address != null ||
+      declared.target == null
+    ) {
+      return declared
+    }
+
+    return {
+      ...declared,
+      owner: declared.owner ?? declared.target,
+      avatar: declared.avatar ?? declared.target,
+    }
   }
 
   function userAccessor() {

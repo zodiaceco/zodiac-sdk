@@ -126,6 +126,74 @@ describe('push', () => {
     })
   })
 
+  describe('a new modifier', () => {
+    it('acts for and is owned by its target unless it says otherwise', async () => {
+      const eth = setup()
+      const dao = eth.safe['GG DAO']
+      const roles = eth.roles['New Roles']({ nonce: 0n, target: dao })
+      const timelock = eth.delay['New Timelock']({
+        nonce: 0n,
+        target: dao,
+        cooldown: 0n,
+        expiration: 0n,
+      })
+
+      const { api, lastPayload } = mockApi()
+      await push({ dao, roles, timelock }, { api })
+
+      expect(lastPayload().specification.slice(1)).toEqual([
+        expect.objectContaining({ owner: '$dao', avatar: '$dao' }),
+        expect.objectContaining({ owner: '$dao', avatar: '$dao' }),
+      ])
+    })
+
+    it('keeps an owner and an avatar it names', async () => {
+      const eth = setup()
+      const dao = eth.safe['GG DAO']
+      const roles = eth.roles['New Roles']({
+        nonce: 0n,
+        target: dao,
+        owner: '0x1111111111111111111111111111111111111111',
+        avatar: '0x2222222222222222222222222222222222222222',
+      })
+
+      const { api, lastPayload } = mockApi()
+      await push({ dao, roles }, { api })
+
+      expect(lastPayload().specification[1]).toMatchObject({
+        owner: '0x1111111111111111111111111111111111111111',
+        avatar: '0x2222222222222222222222222222222222222222',
+      })
+    })
+
+    it('leaves an existing modifier as it is on chain', async () => {
+      const eth = setup()
+      const dao = eth.safe['GG DAO']
+      const timelock = eth.delay['Timelock']({ target: dao })
+
+      const { api, lastPayload } = mockApi()
+      await push({ dao, timelock }, { api })
+
+      expect(lastPayload().specification[1]).not.toHaveProperty('owner')
+      expect(lastPayload().specification[1]).not.toHaveProperty('avatar')
+    })
+
+    it('leaves a modifier bound by address as it is on chain', async () => {
+      const eth = setup()
+      const dao = eth.safe['GG DAO']
+      const roles = eth.roles['Bound Roles']({
+        address: '0x3333333333333333333333333333333333333333',
+        target: dao,
+      })
+
+      const { api, lastPayload } = mockApi()
+      await push({ dao, roles }, { api })
+
+      expect(lastPayload().specification[1]).not.toHaveProperty('owner')
+      expect(lastPayload().specification[1]).not.toHaveProperty('avatar')
+    })
+  })
+
   it('resolves a safe that names a delay as one of its modules', async () => {
     const eth = setup()
     const timelock = eth.delay['New Timelock']({
