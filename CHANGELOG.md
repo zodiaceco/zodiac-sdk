@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.9.0](https://github.com/zodiaceco/zodiac-sdk/compare/v2.8.1...v2.9.0) (2026-10-20)
+
+
+### Features
+
+* let a transfer name a Safe created in the same deployment ([#92](https://github.com/zodiaceco/zodiac-sdk/issues/92)) ([61b63d2](https://github.com/zodiaceco/zodiac-sdk/commit/61b63d2201b1f8f399ed859fd665569f475350d0))
+
+
+### Bug Fixes
+
+* default a new modifier's owner and avatar to its target, as documented ([#93](https://github.com/zodiaceco/zodiac-sdk/issues/93)) ([fb76fab](https://github.com/zodiaceco/zodiac-sdk/commit/fb76fabc9f799dcb560defd81feb0db32775d0cb))
+* **release:** release the SDK on its own ([#90](https://github.com/zodiaceco/zodiac-sdk/issues/90)) ([421b358](https://github.com/zodiaceco/zodiac-sdk/commit/421b3580116473a688301b270280c1e245f07cfe))
+
 ## [2.8.1](https://github.com/zodiaceco/zodiac-sdk/compare/v2.8.0...v2.8.1) (2026-10-19)
 
 
