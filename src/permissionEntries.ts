@@ -128,7 +128,8 @@ export type TransferEntry = {
   action: {
     type: 'transfer'
     tokens: Address[]
-    to: Address[]
+    /** A node is a Safe created in the same deployment, sent as a reference. */
+    to: (Address | NodeRef)[]
     bridge?: { chain: ChainId; to: Address[]; receive: Address[] }[]
     allowance?: AllowanceKey
   }

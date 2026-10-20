@@ -314,9 +314,11 @@ allowance: `c.withinAllowance('usdc_payouts')` on a parameter, or
 keys consist of 1 to 31 letters, digits, underscores or hyphens.
 
 Tokens are named by address, not by symbol. A `transfer()` recipient may also
-be a node — an account from your codegen, or one bound by address — which
-stands for the address it lives at. A node whose address is only known once the
-constellation is deployed is rejected at compile time.
+be a node, which stands for the address it lives at. A node created in the
+same deployment has no address yet, so it is sent as a reference and its
+address substituted at deploy, the way a Roles mod names its `target` — it has
+to be part of the `push()`. A `bridge` recipient lives on another chain, where
+this constellation cannot reference it, so it has to exist already.
 
 ### Showing accounts and roles in the Zodiac app
 

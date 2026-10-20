@@ -302,6 +302,38 @@ describe('actions', () => {
     })
   })
 
+  it('keeps a node recipient that has no address yet', () => {
+    const eth = constellation(
+      { workspace: 'GG', label: 'test', chain: 1 },
+      { codegen }
+    )
+    const safe = eth.safe['Ops Safe']({ nonce: 0n, threshold: 1, owners: [] })
+
+    expect(
+      transfer({ label: 'Rebalance', tokens: [USDC], to: [safe] }).action.to
+    ).toEqual([safe])
+  })
+
+  it('refuses a bridge recipient that has no address yet', () => {
+    const gno = constellation(
+      { workspace: 'GG', label: 'test', chain: 100 },
+      { codegen }
+    )
+
+    expect(() =>
+      transfer({
+        label: 'Grant payouts',
+        tokens: [USDC],
+        bridge: [
+          {
+            to: [gno.safe['Ops Safe']({ nonce: 0n, threshold: 1, owners: [] })],
+            receive: [WETH],
+          },
+        ],
+      })
+    ).toThrow('"Ops Safe" has no address yet')
+  })
+
   it('takes an allowance key as a plain label', () => {
     expect(
       transfer({
@@ -387,6 +419,85 @@ describe('push', () => {
         },
       },
     ])
+  })
+
+  it('sends a recipient created in the same deployment as a reference', async () => {
+    const { api, lastPayload } = mockApi()
+    const eth = constellation(
+      { workspace: 'GG', label: 'test', chain: 1 },
+      { codegen }
+    )
+    const opsSafe = eth.safe['Ops Safe']({
+      nonce: 0n,
+      threshold: 1,
+      owners: [],
+    })
+    const dao = eth.safe['GG DAO']
+
+    await push(
+      {
+        opsSafe,
+        dao,
+        roles: eth.roles['New Roles']({
+          nonce: 0n,
+          target: dao,
+          roles: {
+            treasury_ops: {
+              members: [],
+              permissions: [
+                transfer({
+                  label: 'Rebalance',
+                  tokens: [USDC],
+                  to: [opsSafe, dao],
+                }),
+              ],
+            },
+          },
+        }),
+      },
+      { api }
+    )
+
+    expect(
+      lastPayload().specification[2].roles.treasury_ops.permissions[0].action.to
+    ).toEqual(['$opsSafe', '0xcccc00000000000000000000000000000000cccc'])
+  })
+
+  it('sends an uninvoked accessor named as a recipient as a reference', async () => {
+    const { api, lastPayload } = mockApi()
+    const eth = constellation(
+      { workspace: 'GG', label: 'test', chain: 1 },
+      { codegen }
+    )
+    const dao = eth.safe['GG DAO']
+
+    await push(
+      {
+        dao,
+        roles: eth.roles['New Roles']({
+          nonce: 0n,
+          target: dao,
+          roles: {
+            treasury_ops: {
+              members: [],
+              permissions: [
+                transfer({
+                  label: 'Rebalance',
+                  tokens: [USDC],
+                  to: [eth.safe['Ops Safe']],
+                }),
+              ],
+            },
+          },
+        }),
+        opsSafe: eth.safe['Ops Safe']({ nonce: 0n, threshold: 1, owners: [] }),
+      },
+      { api }
+    )
+
+    expect(
+      lastPayload().specification[1].roles.treasury_ops.permissions[0].action.to
+    ).toEqual(['$opsSafe'])
   })
 
   it('renders a DeFi Kit entry into the annotation for the role"s chain', async () => {
