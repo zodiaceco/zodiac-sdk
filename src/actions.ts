@@ -205,10 +205,12 @@ type SwapParams = {
   /** Tokens the role may buy. */
   buy: readonly Address[]
   /** Allowance capping what may be sold, across every token in `sell`. Pass
-   * the allowance declared on the roles modifier, or its key. */
+   * the allowance declared on the roles modifier, or its key. The cap is per
+   * roles modifier, so per vault. */
   sellAllowance?: AllowanceSpec | AllowanceKey
   /** Allowance capping what may be bought, across every token in `buy`. Pass
-   * the allowance declared on the roles modifier, or its key. */
+   * the allowance declared on the roles modifier, or its key. The cap is per
+   * roles modifier, so per vault. */
   buyAllowance?: AllowanceSpec | AllowanceKey
 }
 
@@ -224,7 +226,7 @@ type TransferParams = {
   /** Destinations on other chains, bridged over Across. */
   bridge?: readonly BridgeTarget[]
   /** Allowance capping what may be sent. Pass the allowance declared on the
-   * roles modifier, or its key. */
+   * roles modifier, or its key. The cap is per roles modifier, so per vault. */
   allowance?: AllowanceSpec | AllowanceKey
 }
 
