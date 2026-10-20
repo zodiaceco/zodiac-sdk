@@ -210,7 +210,7 @@ export default [allow.eth.weth.withdraw()] satisfies Permissions;
 
 #### Allowances
 
-An allowance is a refilling budget the Roles modifier tracks on-chain. Define it once under `constellation/allowances/`, hand it to the roles node, and reference it from any permission that should draw on it:
+An allowance is a refilling budget the Roles modifier tracks on-chain. Each Roles modifier tracks its own, so a policy enabled on three vaults has three Roles mods and three separate budgets: size an allowance per vault. Define it once under `constellation/allowances/`, hand it to the roles node, and reference it from any permission that should draw on it:
 
 ```ts
 // constellation/allowances/index.ts
@@ -277,7 +277,7 @@ export const policy = "Treasury Ops";
 export const description = "Day-to-day treasury operations";
 ```
 
-Neither reaches the chain. The policy's identity is the role key (`treasury_ops`), not its name, so renaming it changes nothing onchain. Every Roles mod that has a role with the same key carries the same policy: each of them has to give it the same name, description, members and permissions, and no two of them may act for the same Safe.
+Neither reaches the chain. The policy's identity is the role key (`treasury_ops`), not its name, so renaming it changes nothing onchain. Every Roles mod that has a role with the same key carries the same policy: each of them has to give it the same name, description, members and permissions, and no two of them may act for the same Safe. Allowances are not shared between them: each keeps its own balances.
 
 ## Commands
 

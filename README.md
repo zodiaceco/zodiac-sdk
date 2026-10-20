@@ -338,7 +338,9 @@ in the Zodiac app for the rest of your org:
   The role key (`treasury_ops`) is the policy's identity and its on-chain role
   key, so renaming the label changes nothing on chain. Every Roles mod carrying
   the key has to grant it the same way, and no two of them may act for the
-  same Safe.
+  same Safe. Allowances are not shared between them: each Roles mod tracks its
+  own balances, so a policy on three vaults has three budgets of every
+  allowance it uses.
 
 ### Pushing the constellation
 

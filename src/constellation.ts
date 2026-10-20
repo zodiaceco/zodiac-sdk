@@ -189,7 +189,8 @@ export type RolesNode = NodeBase &
     roles?: Record<string, RoleDef | null>
     /** Spending allowances configured on this modifier, keyed by name. Pass
      * `null` for a key to clear that allowance; unmentioned allowances are
-     * left untouched. */
+     * left untouched. Each modifier tracks its own balances, so a policy on
+     * several vaults has a separate budget on each. */
     allowances?: Record<string, AllowanceSpec | null>
   }>
 
@@ -255,7 +256,8 @@ type RolesConfig = {
   roles?: Record<string, RoleDef | null>
   /** Spending allowances to configure on this modifier, keyed by name. Pass
    * `null` for a key to clear that allowance; unmentioned allowances are
-   * left untouched. */
+   * left untouched. Each modifier tracks its own balances, so a policy on
+   * several vaults has a separate budget on each. */
   allowances?: Record<string, AllowanceSpec | null>
 }
 
