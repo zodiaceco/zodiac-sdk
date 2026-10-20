@@ -58,7 +58,7 @@
   },
   "dependencies": {
     "@epic-web/invariant": "1.0.0",
-    "@zodiaceco/api-types": "^1.12.0",
+    "@zodiaceco/api-types": "^1.13.0",
     "commander": "^14.0.3",
     "defi-kit": "^2.26.12",
     "dotenv": "^17.4.2",
