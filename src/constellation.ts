@@ -556,7 +556,11 @@ export function constellation<
       return declared
     }
 
-    return { owner: declared.target, avatar: declared.target, ...declared }
+    return {
+      ...declared,
+      owner: declared.owner ?? declared.target,
+      avatar: declared.avatar ?? declared.target,
+    }
   }
 
   function userAccessor() {
