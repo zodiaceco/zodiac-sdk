@@ -159,6 +159,14 @@ const newSafe = eth.safe['New Safe']({
 })
 ```
 
+The other fields stay as they are, so the same code keeps describing the Safe it deployed. They become optional once there is an `address`: to name a Safe that is on chain but not in your workspace, the address alone is enough, and only what you pass is declared:
+
+```ts
+const existing = eth.safe['Existing Safe']({
+  address: '0x88A51CcB262d04B334065Ad425928dF79c4CB7d7',
+})
+```
+
 Roles and Delay mods bind by `address` in the same way, see below.
 
 ### Delay mods

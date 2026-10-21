@@ -160,10 +160,12 @@ export type SafeNode = NodeBase &
   Readonly<{
     /** Discriminator identifying this node as a Safe. */
     type: 'SAFE'
-    /** Number of owner signatures required to execute a transaction. */
-    threshold: number
-    /** Safe owner addresses or node references. */
-    owners: readonly (string | NodeRef)[]
+    /** Number of owner signatures required to execute a transaction. Absent
+     * on a safe bound by address that leaves it as it is on chain. */
+    threshold?: number
+    /** Safe owner addresses or node references. Absent on a safe bound by
+     * address that leaves them as they are on chain. */
+    owners?: readonly (string | NodeRef)[]
     /** Module addresses or node references enabled on the safe. */
     modules?: readonly (string | NodeRef)[]
     /** Whether this safe shall appear as a vault in the workspace. @default false */
@@ -228,23 +230,41 @@ export type ConstellationNodeInternal = ConstellationNode & {
   _declared: readonly string[]
 }
 
-type NewSafeProps = {
-  /** Deployment nonce for CREATE2 address derivation. */
-  nonce: bigint
-  /** The address this Safe was deployed at. Pin it once the Safe exists:
-   * without it, the address is derived from the setup Safe of whoever deploys,
-   * which is per user and per org, so the same declaration names a different
-   * Safe for anyone else. */
-  address?: Address
-  /** Number of owner signatures required to execute a transaction. */
-  threshold: number
-  /** Safe owner addresses or node references. */
-  owners: readonly AddressOrRef[]
+/** Configuration shared by both ways of declaring a safe. */
+type SafeConfig = {
   /** Module addresses or node references to enable on the safe. */
   modules?: readonly AddressOrRef[]
   /** Whether this safe is a workspace vault. @default false */
   vault?: boolean
 }
+
+/** Declare a brand-new safe (address derived via CREATE2 from `nonce`). */
+type NewSafeByNonce = SafeConfig & {
+  /** Deployment nonce for CREATE2 address derivation. */
+  nonce: bigint
+  /** Number of owner signatures required to execute a transaction. */
+  threshold: number
+  /** Safe owner addresses or node references. */
+  owners: readonly AddressOrRef[]
+}
+
+/** Bind to a safe already deployed on-chain at a known address. Only what is
+ * passed is declared: every other field stays as it is on chain. */
+type ExistingSafeByAddress = SafeConfig & {
+  /** Address of the existing safe. Pin a safe deployed from a `nonce` here
+   * once it exists: without it, the address is derived from the setup Safe of
+   * whoever deploys, which is per user and per org, so the same declaration
+   * names a different safe for anyone else. */
+  address: Address
+  /** Deployment nonce the safe was created with. */
+  nonce?: bigint
+  /** Number of owner signatures required to execute a transaction. */
+  threshold?: number
+  /** Safe owner addresses or node references. */
+  owners?: readonly AddressOrRef[]
+}
+
+type NewSafeProps = NewSafeByNonce | ExistingSafeByAddress
 
 /** Configuration shared by both ways of declaring a roles modifier. */
 type RolesConfig = {

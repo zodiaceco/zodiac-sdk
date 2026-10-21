@@ -137,6 +137,26 @@ describe('constellation API', () => {
       expect(pinned.nonce).toBe(0n)
     })
 
+    it('binds to an existing safe by address alone', () => {
+      const eth = setup()
+
+      const existing = eth.safe['Existing Safe']({
+        address: '0x88A51CcB262d04B334065Ad425928dF79c4CB7d7',
+      })
+
+      expect(existing.type).toBe('SAFE')
+      expect(existing.address).toBe(
+        '0x88A51CcB262d04B334065Ad425928dF79c4CB7d7'
+      )
+      expect(existing.label).toBe('Existing Safe')
+    })
+
+    it('rejects a safe declared with neither nonce nor address', () => {
+      const eth = setup()
+      // @ts-expect-error — must provide either `nonce` (new) or `address` (existing)
+      eth.safe['Incomplete']({ threshold: 1, owners: [] })
+    })
+
     it('returns a frozen (non-callable) node ref', () => {
       const eth = setup()
       const newSafe = eth.safe['Brand New']({
