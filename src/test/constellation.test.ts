@@ -123,6 +123,20 @@ describe('constellation API', () => {
       expect(newSafe.type).toBe('SAFE')
     })
 
+    it('pins a new safe to the address it was deployed at', () => {
+      const eth = setup()
+
+      const pinned = eth.safe['Pinned Safe']({
+        address: '0x88A51CcB262d04B334065Ad425928dF79c4CB7d7',
+        nonce: 0n,
+        threshold: 1,
+        owners: ['0xb8e48df6818d3cbc648b3e8ec248a4f547135f7a'],
+      })
+
+      expect(pinned.address).toBe('0x88A51CcB262d04B334065Ad425928dF79c4CB7d7')
+      expect(pinned.nonce).toBe(0n)
+    })
+
     it('returns a frozen (non-callable) node ref', () => {
       const eth = setup()
       const newSafe = eth.safe['Brand New']({

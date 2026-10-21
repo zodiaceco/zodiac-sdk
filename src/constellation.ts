@@ -231,6 +231,11 @@ export type ConstellationNodeInternal = ConstellationNode & {
 type NewSafeProps = {
   /** Deployment nonce for CREATE2 address derivation. */
   nonce: bigint
+  /** The address this Safe was deployed at. Pin it once the Safe exists:
+   * without it, the address is derived from the setup Safe of whoever deploys,
+   * which is per user and per org, so the same declaration names a different
+   * Safe for anyone else. */
+  address?: Address
   /** Number of owner signatures required to execute a transaction. */
   threshold: number
   /** Safe owner addresses or node references. */

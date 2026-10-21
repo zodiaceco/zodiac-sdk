@@ -71,7 +71,7 @@ your code  ◀──pull──  Zodiac OS  ◀───────────�
 
 **Deploying happens in the app.** The review page diffs the revision against on-chain state and derives addresses for new nodes from the personal Safe of whoever triggers the deployment — so until a deployment settles them, two people looking at the same constellation see different addresses for new nodes. Deploying registers the accounts in Zodiac OS and executes the transactions. A constellation moves Draft → Pending → Deployed, and the next push starts a new revision back at Draft.
 
-**Then pull again.** Once the new accounts have been seen on chain, the next `pull` includes them, keyed by label per chain — from that point on, reference them (`eth.safe['New Safe']`) instead of re-declaring them with a `nonce`. A project's `push` script runs `zodiac pull` first (`zodiac pull && zodiac push`), so this mostly takes care of itself. The case to avoid is pushing from a stale checkout where an already-deployed node is still declared by `nonce`: the original deployer would re-derive the same address, but anyone else deploying that revision would create a duplicate account.
+**Then pull again.** Once the new accounts have been seen on chain, the next `pull` includes them, keyed by label per chain — from that point on, reference them (`eth.safe['New Safe']`) instead of re-declaring them with a `nonce`. A project's `push` script runs `zodiac pull` first (`zodiac pull && zodiac push`), so this mostly takes care of itself. The case to avoid is pushing from a stale checkout where an already-deployed node is still declared by `nonce`: the original deployer would re-derive the same address, but anyone else deploying that revision would create a duplicate account. Code that keeps declaring a deployed node, such as one pushed to several orgs, pins it by `address` instead (see [Creating new accounts](#creating-new-accounts)).
 
 ## Constellation API
 
@@ -147,6 +147,19 @@ const newDelay = eth.delay['New Timelock']({
   expiration: 604800n, // a week to execute it in, `0n` to never expire
 })
 ```
+
+A new node's address is derived at deploy from the setup Safe of whoever deploys it, so it only holds for that person, in that org. Once a Safe is deployed, pin it by `address` in the declaration to make it name that Safe for everyone — for code pushed to a second org, or deployed by someone else:
+
+```ts
+const newSafe = eth.safe['New Safe']({
+  address: '0x90f45a22589f2fa420c1be7e2446ba209b01cfa1',
+  nonce: 0n,
+  threshold: 2,
+  owners: [eth.user['Alice Sample']],
+})
+```
+
+Roles and Delay mods bind by `address` in the same way, see below.
 
 ### Delay mods
 
