@@ -160,10 +160,12 @@ export type SafeNode = NodeBase &
   Readonly<{
     /** Discriminator identifying this node as a Safe. */
     type: 'SAFE'
-    /** Number of owner signatures required to execute a transaction. */
-    threshold: number
-    /** Safe owner addresses or node references. */
-    owners: readonly (string | NodeRef)[]
+    /** Number of owner signatures required to execute a transaction. Absent
+     * on a safe bound by address that leaves it as it is on chain. */
+    threshold?: number
+    /** Safe owner addresses or node references. Absent on a safe bound by
+     * address that leaves them as they are on chain. */
+    owners?: readonly (string | NodeRef)[]
     /** Module addresses or node references enabled on the safe. */
     modules?: readonly (string | NodeRef)[]
     /** Whether this safe shall appear as a vault in the workspace. @default false */
@@ -228,6 +230,8 @@ export type ConstellationNodeInternal = ConstellationNode & {
   _declared: readonly string[]
 }
 
+/** A safe that is not deployed yet: its address is derived via CREATE2 from
+ * `nonce`, so its full spec is needed. */
 type NewSafeProps = {
   /** Deployment nonce for CREATE2 address derivation. */
   nonce: bigint
@@ -241,8 +245,11 @@ type NewSafeProps = {
   vault?: boolean
 }
 
-/** Configuration shared by both ways of declaring a roles modifier. */
-type RolesConfig = {
+/** A roles modifier that is not deployed yet: its address is derived via
+ * CREATE2 from `nonce`. */
+type NewRolesProps = {
+  /** Deployment nonce for CREATE2 address derivation. */
+  nonce: bigint
   /** The safe that this roles modifier controls. Defaults to the new safe with the same label, when one exists. */
   target?: AddressOrRef
   /** The account that calls will be executed from. Defaults to `target` value */
@@ -261,59 +268,45 @@ type RolesConfig = {
   allowances?: Record<string, AllowanceSpec | null>
 }
 
-/** Declare a brand-new roles modifier (address derived via CREATE2 from `nonce`). */
-type NewRolesByNonce = RolesConfig & {
+/** A delay modifier that is not deployed yet: its address is derived via
+ * CREATE2 from `nonce`. */
+type NewDelayProps = {
   /** Deployment nonce for CREATE2 address derivation. */
   nonce: bigint
-}
-
-/** Bind to a roles modifier already deployed on-chain at a known address, to
- * reconfigure its roles/allowances. Use this for mods not (yet) imported into
- * the workspace — pass the address instead of a deployment `nonce`. */
-type ExistingRolesByAddress = RolesConfig & {
-  /** Address of the existing Roles mod to bind to and reconfigure. */
-  address: Address
-}
-
-type NewRolesProps = NewRolesByNonce | ExistingRolesByAddress
-
-/** Configuration shared by both ways of declaring a delay modifier. */
-type DelayConfig = {
   /** The safe that this delay modifier controls. Defaults to the new safe with the same label, when one exists. */
   target?: AddressOrRef
   /** The account that calls will be executed from. Defaults to `target` value */
   avatar?: AddressOrRef
   /** The account that is allowed to update the configuration of the Delay Mod. Defaults to `target` value */
   owner?: AddressOrRef
+  /** Seconds a queued transaction waits before it becomes executable. */
+  cooldown: bigint
+  /** Seconds a transaction stays executable once its cooldown has passed. */
+  expiration: bigint
   /** Module addresses or node references allowed to queue transactions through
    * this delay. A complete array replaces the enabled modules. */
   modules?: readonly AddressOrRef[]
 }
 
-/** Declare a brand-new delay modifier (address derived via CREATE2 from `nonce`). */
-type NewDelayByNonce = DelayConfig & {
-  /** Deployment nonce for CREATE2 address derivation. */
-  nonce: bigint
-  /** Seconds a queued transaction waits before it becomes executable. */
-  cooldown: bigint
-  /** Seconds a transaction stays executable once its cooldown has passed. */
-  expiration: bigint
+/**
+ * A node bound to the account deployed at `address`, the same rule for every
+ * node type: without an address a node is new and needs its full spec, with
+ * one every field is optional. Only what is passed is declared; the rest
+ * stays as it is on chain.
+ *
+ * Bind an account that is on chain but not in your workspace, or pin a node
+ * deployed from a `nonce` once it exists. A new node's address is derived
+ * from the setup Safe of whoever deploys it, which is per user and per org,
+ * so without the pin the same declaration names a different account for
+ * anyone else.
+ */
+type BoundNodeProps<N extends ConstellationNode> = Omit<
+  N,
+  'type' | 'label' | 'chain' | 'address'
+> & {
+  /** Address of the deployed account. */
+  readonly address: Address
 }
-
-/** Bind to a delay modifier already deployed on-chain at a known address, to
- * reconfigure its cooldown, expiration or modules. Use this for mods not (yet)
- * imported into the workspace — pass the address instead of a deployment
- * `nonce`. */
-type ExistingDelayByAddress = DelayConfig & {
-  /** Address of the existing Delay mod to bind to and reconfigure. */
-  address: Address
-  /** Seconds a queued transaction waits before it becomes executable. */
-  cooldown?: bigint
-  /** Seconds a transaction stays executable once its cooldown has passed. */
-  expiration?: bigint
-}
-
-type NewDelayProps = NewDelayByNonce | ExistingDelayByAddress
 
 type ExistingNodeAccessor<
   Type extends string,
@@ -341,19 +334,21 @@ type NewNodeAccessor<
   Type extends string,
   Ch extends ChainId,
   NP extends Record<string, any>,
+  N extends ConstellationNode,
 > = Readonly<Prettify<{ type: Type; label: string; chain: Ch }>> &
   // `const` so a node reads back the values it was written with — `threshold: 2`
   // rather than `number`. Every prop it widens into is already `readonly`, so
   // the tuples this infers stay assignable.
-  (<const P extends NP>(
+  (<const P extends NP | BoundNodeProps<N>>(
     props: P
   ) => Readonly<Prettify<P & { type: Type; label: string; chain: Ch }>>)
 
 type EntityAccessor<
   Type extends string,
   Entries extends Record<string, any>,
-  Ch extends ChainId = ChainId,
-  NP extends Record<string, any> = Record<string, any>,
+  Ch extends ChainId,
+  NP extends Record<string, any>,
+  N extends ConstellationNode,
 > = {
   readonly [K in keyof Entries & string]: ExistingNodeAccessor<
     Type,
@@ -363,7 +358,7 @@ type EntityAccessor<
     NP
   >
 } & {
-  readonly [key: string]: NewNodeAccessor<Type, Ch, NP>
+  readonly [key: string]: NewNodeAccessor<Type, Ch, NP, N>
 }
 
 type UserAccessor<C extends CodegenData, Ch extends number> = {
@@ -378,13 +373,31 @@ type ConstellationResult<
 > = {
   /** Access existing safes by label or create new ones with a new label.
    * Only SAFE-typed accounts are suggested in IntelliSense. */
-  safe: EntityAccessor<'SAFE', SafeEntries<C, W, Ch>, Ch, NewSafeProps>
+  safe: EntityAccessor<
+    'SAFE',
+    SafeEntries<C, W, Ch>,
+    Ch,
+    NewSafeProps,
+    SafeNode
+  >
   /** Access existing roles modifiers by label or create new ones with a
    * new label. Only ROLES-typed accounts are suggested in IntelliSense. */
-  roles: EntityAccessor<'ROLES', RolesEntries<C, W, Ch>, Ch, NewRolesProps>
+  roles: EntityAccessor<
+    'ROLES',
+    RolesEntries<C, W, Ch>,
+    Ch,
+    NewRolesProps,
+    RolesNode
+  >
   /** Access existing delay modifiers by label or create new ones with a
    * new label. Only DELAY-typed accounts are suggested in IntelliSense. */
-  delay: EntityAccessor<'DELAY', DelayEntries<C, W, Ch>, Ch, NewDelayProps>
+  delay: EntityAccessor<
+    'DELAY',
+    DelayEntries<C, W, Ch>,
+    Ch,
+    NewDelayProps,
+    DelayNode
+  >
   /** Resolve a user's personal safe address on the constellation's chain. */
   user: UserAccessor<C, Ch>
 }

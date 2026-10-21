@@ -194,6 +194,44 @@ describe('push', () => {
     })
   })
 
+  it('sends a safe pinned by address with that address', async () => {
+    const eth = setup()
+    const safe = eth.safe['Pinned Safe']({
+      address: '0x88A51CcB262d04B334065Ad425928dF79c4CB7d7',
+      nonce: 0n,
+      threshold: 1,
+      owners: ['0xaaaa00000000000000000000000000000000aaaa'],
+    })
+
+    const { api, lastPayload } = mockApi()
+    await push({ safe }, { api })
+
+    expect(lastPayload().specification[0]).toMatchObject({
+      address: '0x88a51ccb262d04b334065ad425928df79c4cb7d7',
+      nonce: '0',
+    })
+  })
+
+  it('sends a safe bound by address alone as that address and nothing else', async () => {
+    const eth = setup()
+    const safe = eth.safe['Bound Safe']({
+      address: '0x88A51CcB262d04B334065Ad425928dF79c4CB7d7',
+    })
+
+    const { api, lastPayload } = mockApi()
+    await push({ safe }, { api })
+
+    const [spec] = lastPayload().specification
+    expect(spec).toMatchObject({
+      type: 'SAFE',
+      address: '0x88a51ccb262d04b334065ad425928df79c4cb7d7',
+      label: 'Bound Safe',
+    })
+    expect(spec).not.toHaveProperty('nonce')
+    expect(spec).not.toHaveProperty('owners')
+    expect(spec).not.toHaveProperty('threshold')
+  })
+
   it('resolves a safe that names a delay as one of its modules', async () => {
     const eth = setup()
     const timelock = eth.delay['New Timelock']({
