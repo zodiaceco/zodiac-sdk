@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.8.1](https://github.com/zodiaceco/zodiac-sdk/compare/create-v2.8.0...create-v2.8.1) (2026-10-21)
+
+
+### Bug Fixes
+
+* default a new modifier's owner and avatar to its target, as documented ([#93](https://github.com/zodiaceco/zodiac-sdk/issues/93)) ([fb76fab](https://github.com/zodiaceco/zodiac-sdk/commit/fb76fabc9f799dcb560defd81feb0db32775d0cb))
+
 ## [2.8.0](https://github.com/zodiaceco/zodiac-sdk/compare/create-v2.7.0...create-v2.8.0) (2026-10-19)
 
 
