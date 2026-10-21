@@ -224,9 +224,11 @@ const destinationChain = (
 type SwapParams = {
   /** Names the action in the app. Never reaches the chain. */
   label: string
-  /** Tokens the role may sell. */
+  /** Tokens the role may sell. Use the zero address for the native token:
+   * CoW sells only ERC20s, so it is wrapped (WETH on Ethereum) before it is
+   * sold. */
   sell: readonly Address[]
-  /** Tokens the role may buy. */
+  /** Tokens the role may buy. Use the zero address for the native token. */
   buy: readonly Address[]
   /** Allowance capping what may be sold, across every token in `sell`. Pass
    * the allowance declared on the roles modifier, or its key. The cap is per
@@ -241,7 +243,9 @@ type SwapParams = {
 type TransferParams = {
   /** Names the action in the app. Never reaches the chain. */
   label: string
-  /** Tokens the role may transfer. Use the zero address for the native token. */
+  /** Tokens the role may transfer. Use the zero address for the native token.
+   * It can only be sent on the role's own chain: `bridge` cannot carry it, so
+   * bridge the wrapped token instead. */
   tokens: readonly Address[]
   /** Addresses the role may transfer to on the role's own chain. A node stands
    * for its address. One created in the same deployment has none yet, and is

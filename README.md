@@ -277,11 +277,14 @@ Each helper covers a different kind of action:
 - `swap()` allows signing CoW orders between the tokens it names, optionally
   capped by allowances declared on the same Roles mod: `sellAllowance` caps
   what may be sold across every token in `sell`, `buyAllowance` what may be
-  bought across every token in `buy`. Either one can be set on its own.
+  bought across every token in `buy`. Either one can be set on its own. Name
+  the native token by the zero address: selling it wraps it first, since CoW
+  only sells ERC20s.
 - `transfer()` allows sending tokens to the addresses it names, optionally
   capped by an allowance declared on the same Roles mod. Pass the zero address
-  to allow sending the native token. `bridge` names destinations on other
-  chains, sent over Across: each target pins both the recipients and the tokens
+  to allow sending the native token, on the role's own chain only: it cannot
+  be bridged, so bridge the wrapped token instead. `bridge` names destinations
+  on other chains, sent over Across: each target pins both the recipients and the tokens
   they may receive there. A target takes its chain from its recipient nodes, or
   name one with `chain` when the recipients are plain addresses. Tokens without
   an Across route to a target are skipped, the same way the app skips them —
