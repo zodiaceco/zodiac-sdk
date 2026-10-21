@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.10.0](https://github.com/zodiaceco/zodiac-sdk/compare/v2.9.0...v2.10.0) (2026-10-21)
+
+
+### Features
+
+* bind any node by address, and pin a deployed one ([#97](https://github.com/zodiaceco/zodiac-sdk/issues/97)) ([17d6814](https://github.com/zodiaceco/zodiac-sdk/commit/17d681419acecac4541d7ea59c6401f468932693))
+
 ## [2.9.0](https://github.com/zodiaceco/zodiac-sdk/compare/v2.8.1...v2.9.0) (2026-10-20)
 
 
