@@ -71,7 +71,7 @@ your code  ◀──pull──  Zodiac OS  ◀───────────�
 
 **Deploying happens in the app.** The review page diffs the revision against on-chain state and derives addresses for new nodes from the personal Safe of whoever triggers the deployment — so until a deployment settles them, two people looking at the same constellation see different addresses for new nodes. Deploying registers the accounts in Zodiac OS and executes the transactions. A constellation moves Draft → Pending → Deployed, and the next push starts a new revision back at Draft.
 
-**Then pull again.** Once the new accounts have been seen on chain, the next `pull` includes them, keyed by label per chain — from that point on, reference them (`eth.safe['New Safe']`) instead of re-declaring them with a `nonce`. A project's `push` script runs `zodiac pull` first (`zodiac pull && zodiac push`), so this mostly takes care of itself. The case to avoid is pushing from a stale checkout where an already-deployed node is still declared by `nonce`: the original deployer would re-derive the same address, but anyone else deploying that revision would create a duplicate account. Code that keeps declaring a deployed node, such as one pushed to several orgs, pins it by `address` instead (see [Creating new accounts](#creating-new-accounts)).
+**Then pull again.** Once the new accounts have been seen on chain, the next `pull` includes them, keyed by label per chain — from that point on, reference them (`eth.safe['New Safe']`) instead of re-declaring them with a `nonce`. A project's `push` script runs `zodiac pull` first (`zodiac pull && zodiac push`), so this mostly takes care of itself. The case to avoid is pushing from a stale checkout where an already-deployed node is still declared by `nonce`: the original deployer would re-derive the same address, but anyone else deploying that revision would create a duplicate account. Code that keeps declaring a deployed node, such as one pushed to several orgs, pins it by `address` instead (see [Binding by address](#binding-by-address)).
 
 ## Constellation API
 
@@ -148,7 +148,11 @@ const newDelay = eth.delay['New Timelock']({
 })
 ```
 
-A new node's address is derived at deploy from the setup Safe of whoever deploys it, so it only holds for that person, in that org. Once a Safe is deployed, pin it by `address` in the declaration to make it name that Safe for everyone — for code pushed to a second org, or deployed by someone else:
+### Binding by address
+
+The same rule holds for every node type: without an `address` a node is new and needs its full spec; with one, every field is optional and only what you pass is declared, the rest stays as it is on chain.
+
+A new node's address is derived at deploy from the setup Safe of whoever deploys it, so it only holds for that person, in that org. Once a node is deployed, pin it by `address` in the declaration to make it name that account for everyone — for code pushed to a second org, or deployed by someone else:
 
 ```ts
 const newSafe = eth.safe['New Safe']({
@@ -159,15 +163,13 @@ const newSafe = eth.safe['New Safe']({
 })
 ```
 
-The other fields stay as they are, so the same code keeps describing the Safe it deployed. They become optional once there is an `address`: to name a Safe that is on chain but not in your workspace, the address alone is enough, and only what you pass is declared:
+The other fields can stay, so the same code keeps describing the Safe it deployed. To name an account that is on chain but not in your workspace, the address alone is enough:
 
 ```ts
 const existing = eth.safe['Existing Safe']({
   address: '0x88A51CcB262d04B334065Ad425928dF79c4CB7d7',
 })
 ```
-
-Roles and Delay mods bind by `address` in the same way, see below.
 
 ### Delay mods
 
@@ -188,7 +190,7 @@ const timelock = eth.delay['Treasury Timelock']({
 const treasury = eth.safe['Treasury']({ modules: [timelock] })
 ```
 
-To reconfigure a Delay mod that is already on chain but not in your workspace, bind it by `address` instead of declaring a `nonce` — the same either/or that applies to Roles mods:
+To reconfigure a Delay mod that is already on chain but not in your workspace, bind it by `address` instead of declaring a `nonce` (see [Binding by address](#binding-by-address)):
 
 ```ts
 const existing = eth.delay['Existing timelock']({
