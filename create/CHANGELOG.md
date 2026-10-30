@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.9.0](https://github.com/zodiaceco/zodiac-sdk/compare/create-v2.8.1...create-v2.9.0) (2026-10-30)
+
+
+### Features
+
+* let an allowance declare the decimals its amounts are shown in ([#99](https://github.com/zodiaceco/zodiac-sdk/issues/99)) ([e5e9066](https://github.com/zodiaceco/zodiac-sdk/commit/e5e9066a7a781e008a0a886f70ef171fc6178bc0))
+
 ## [2.8.1](https://github.com/zodiaceco/zodiac-sdk/compare/create-v2.8.0...create-v2.8.1) (2026-10-21)
 
 
