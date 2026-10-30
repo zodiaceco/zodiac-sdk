@@ -330,6 +330,33 @@ Every helper takes a `label`. The label names the action in Zodiac and never
 reaches the chain. A bare permission with no enclosing helper stays valid, but
 it has nowhere to appear in the app beyond the targets it allows.
 
+An allowance is declared as a plain object and handed to the Roles mod's
+`allowances`:
+
+```ts
+const usdc_payouts = {
+  key: 'usdc_payouts',
+  refill: 10_000n * 10n ** 6n, // added each period
+  maxRefill: 10_000n * 10n ** 6n, // cap the balance refills to
+  period: 60n * 60n * 24n, // seconds
+  balance: 10_000n * 10n ** 6n, // starting balance
+  timestamp: 0n,
+  decimals: 6, // shows the amounts as 10,000 USDC in Zodiac
+}
+```
+
+The amounts are raw integers in the token's smallest unit, and the Roles mod
+meters them as such. `decimals` is optional and never reaches the chain: it
+tells Zodiac which unit to show the amounts in. Without it, Zodiac uses the
+decimals of the token an action caps. Every Roles mod carrying a policy may
+give an allowance its own amounts, but has to declare the same `decimals` for
+it, or none.
+
+Because the chain compares raw amounts, an allowance only works as one budget
+over tokens with the same decimals. Shared between USDC (6) and DAI (18), a
+budget of 10,000 DAI would let 10,000,000,000,000,000 USDC through. Give tokens
+of different decimals an allowance each.
+
 Allowance keys are plain labels — `key: 'usdc_payouts'` on the declaration, and
 `allowance: usdc_payouts` on the transfer, which reads the key off it. They are
 encoded to bytes32 when the constellation is deployed, so nothing calls
