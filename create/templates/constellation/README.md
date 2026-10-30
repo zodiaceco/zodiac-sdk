@@ -221,8 +221,11 @@ export const usdc_payouts = {
   period: 60n * 60n * 24n, // seconds
   balance: 10_000n * 10n ** 6n, // starting balance
   timestamp: 0n,
+  decimals: 6, // shows the amounts as 10,000 USDC in Zodiac
 };
 ```
+
+The amounts are raw integers in the token's smallest unit, and the Roles mod meters them as such. `decimals` is optional and never reaches the chain: it tells Zodiac which unit to show the amounts in, and defaults to the decimals of the token an action caps. Every Roles mod carrying a policy has to declare the same `decimals` for an allowance, or none. Because the chain compares raw amounts, share an allowance only between tokens with the same decimals: shared between USDC (6) and DAI (18), a budget of 10,000 DAI would let 10,000,000,000,000,000 USDC through.
 
 ```ts
 // constellation/roles/<role>/permissions.ts

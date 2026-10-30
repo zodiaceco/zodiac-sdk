@@ -636,6 +636,45 @@ describe('push', () => {
     })
   })
 
+  it('sends the decimals an allowance is shown in as a number', async () => {
+    const eth = setup()
+
+    // One budget over tokens of 18 and 6 decimals, counted in 18.
+    const stables_daily = {
+      key: 'stables_daily',
+      refill: 300n * 10n ** 18n,
+      maxRefill: 300n * 10n ** 18n,
+      period: 86400n,
+      balance: 300n * 10n ** 18n,
+      timestamp: 0n,
+      decimals: 18,
+    }
+
+    const safe = eth.safe['GG DAO']
+    const roles = eth.roles['GG DAO']({
+      nonce: 0n,
+      owner: safe,
+      target: safe,
+      avatar: safe,
+      allowances: { stables_daily },
+    })
+
+    const { api, lastPayload } = mockApi()
+    await push({ safe, roles }, { api })
+
+    expect(lastPayload().specification[1].allowances).toEqual({
+      stables_daily: {
+        key: 'stables_daily',
+        refill: '300000000000000000000',
+        maxRefill: '300000000000000000000',
+        period: '86400',
+        balance: '300000000000000000000',
+        timestamp: '0',
+        decimals: 18,
+      },
+    })
+  })
+
   it('preserves Record-form roles so unmentioned roles are not cleared', async () => {
     const eth = setup()
 
