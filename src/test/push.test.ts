@@ -178,6 +178,46 @@ describe('push', () => {
       expect(lastPayload().specification[1]).not.toHaveProperty('avatar')
     })
 
+    it('lets a new roles mod unwrap the MultiSend contracts policies are deployed with', async () => {
+      const eth = setup()
+      const dao = eth.safe['GG DAO']
+      const roles = eth.roles['New Roles']({ nonce: 0n, target: dao })
+
+      const { api, lastPayload } = mockApi()
+      await push({ dao, roles }, { api })
+
+      expect(lastPayload().specification[1]).toHaveProperty('multisend', [
+        '0x38869bf66a61cf6bdb996a6ae40d5853fd43b526',
+        '0x9641d764fc13c8b624c04430c7356c1c7c8102e2',
+      ])
+    })
+
+    it('keeps the MultiSend contracts a new roles mod names', async () => {
+      const eth = setup()
+      const dao = eth.safe['GG DAO']
+      const roles = eth.roles['New Roles']({
+        nonce: 0n,
+        target: dao,
+        multisend: [],
+      })
+
+      const { api, lastPayload } = mockApi()
+      await push({ dao, roles }, { api })
+
+      expect(lastPayload().specification[1]).toHaveProperty('multisend', [])
+    })
+
+    it('leaves the MultiSend contracts of an existing roles mod as they are on chain', async () => {
+      const eth = setup()
+      const dao = eth.safe['GG DAO']
+      const roles = eth.roles['DAO Roles']({ target: dao })
+
+      const { api, lastPayload } = mockApi()
+      await push({ dao, roles }, { api })
+
+      expect(lastPayload().specification[1]).not.toHaveProperty('multisend')
+    })
+
     it('leaves a modifier bound by address as it is on chain', async () => {
       const eth = setup()
       const dao = eth.safe['GG DAO']
@@ -191,6 +231,7 @@ describe('push', () => {
 
       expect(lastPayload().specification[1]).not.toHaveProperty('owner')
       expect(lastPayload().specification[1]).not.toHaveProperty('avatar')
+      expect(lastPayload().specification[1]).not.toHaveProperty('multisend')
     })
   })
 

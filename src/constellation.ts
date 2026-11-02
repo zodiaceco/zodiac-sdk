@@ -411,6 +411,12 @@ export type ConstellationMeta = {
 
 const EMPTY_CODEGEN: CodegenData = { users: {}, accounts: {} }
 
+/** Safe's MultiSend and MultiSendCallOnly (v1.4.1), which Zodiac batches calls through. */
+const DEFAULT_MULTISEND: readonly Address[] = [
+  '0x38869bf66a61cf6bdb996a6ae40d5853fd43b526',
+  '0x9641d764fc13c8b624c04430c7356c1c7c8102e2',
+]
+
 // Until `zodiac pull-org` has run there is no codegen, and a constellation that
 // only declares new nodes can still be pushed. Naming an existing account then
 // reads as declaring a new one.
@@ -551,9 +557,10 @@ export function constellation<
 
   /**
    * A new modifier acts for and is owned by the account it targets unless it
-   * says otherwise. Only a creation gets these: a modifier that exists, or is
-   * bound by address, is being updated, and filling them in would declare a
-   * change nobody wrote.
+   * says otherwise, and a new Roles modifier unwraps the MultiSend contracts
+   * that policies are deployed with. Only a creation gets these: a modifier
+   * that exists, or is bound by address, is being updated, and filling them in
+   * would declare a change nobody wrote.
    */
   function withModifierDefaults(
     type: string,
@@ -562,19 +569,19 @@ export function constellation<
   ): Record<string, any> {
     const isModifier = type === 'ROLES' || type === 'DELAY'
 
-    if (
-      !isModifier ||
-      existing != null ||
-      declared.address != null ||
-      declared.target == null
-    ) {
+    if (!isModifier || existing != null || declared.address != null) {
       return declared
     }
 
     return {
       ...declared,
-      owner: declared.owner ?? declared.target,
-      avatar: declared.avatar ?? declared.target,
+      ...(declared.target != null && {
+        owner: declared.owner ?? declared.target,
+        avatar: declared.avatar ?? declared.target,
+      }),
+      ...(type === 'ROLES' && {
+        multisend: declared.multisend ?? DEFAULT_MULTISEND,
+      }),
     }
   }
 
