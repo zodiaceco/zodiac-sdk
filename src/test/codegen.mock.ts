@@ -73,7 +73,17 @@ export const accounts = {
         },
       },
     },
-    rolesMods: {},
+    rolesMods: {
+      1: {
+        'DAO Roles': {
+          id: '66666666-6666-6666-6666-666666666666',
+          label: 'DAO Roles',
+          address: '0xeeee00000000000000000000000000000000eeee',
+          chain: 1,
+          vault: false,
+        },
+      },
+    },
     delays: {
       1: {
         Timelock: {
