@@ -6,19 +6,19 @@ import type {
 import type { ResolvedConfig } from '../config'
 import { ApiClient } from '../../api'
 import { getAddress } from 'ethers'
-import {
-  ModuleKind,
-  Project,
-  ScriptTarget,
-  VariableDeclarationKind,
-} from 'ts-morph'
 import { mkdirSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { resolveZodiacDir } from '../../paths'
 
-const toLiteral = (value: unknown, indent = 0): string => {
+/**
+ * Writes `value` as source: as a JavaScript expression, or as the type
+ * TypeScript gives that expression `as const`, which makes every property
+ * `readonly`, every array a `readonly` tuple and every value its literal type.
+ */
+const toSource = (value: unknown, as: 'value' | 'type', indent = 0): string => {
   const pad = '  '.repeat(indent)
   const childPad = '  '.repeat(indent + 1)
+  const readonly = as === 'type' ? 'readonly ' : ''
 
   if (value === null) return 'null'
   if (typeof value === 'bigint') return `${value}n`
@@ -26,17 +26,18 @@ const toLiteral = (value: unknown, indent = 0): string => {
   if (typeof value === 'number' || typeof value === 'boolean')
     return String(value)
   if (Array.isArray(value)) {
-    if (value.length === 0) return '[]'
-    return `[\n${value.map((v) => `${childPad}${toLiteral(v, indent + 1)}`).join(',\n')},\n${pad}]`
+    if (value.length === 0) return `${readonly}[]`
+    return `${readonly}[\n${value.map((v) => `${childPad}${toSource(v, as, indent + 1)}`).join(',\n')},\n${pad}]`
   }
   if (typeof value === 'object') {
     const entries = Object.entries(value as Record<string, unknown>)
     if (entries.length === 0) return '{}'
+    const separator = as === 'type' ? ';' : ','
     const props = entries.map(
       ([k, v]) =>
-        `${childPad}${isBareKey(k) ? k : JSON.stringify(k)}: ${toLiteral(v, indent + 1)}`
+        `${childPad}${readonly}${isBareKey(k) ? k : JSON.stringify(k)}: ${toSource(v, as, indent + 1)}${separator}`
     )
-    return `{\n${props.join(',\n')},\n${pad}}`
+    return `{\n${props.join('\n')}\n${pad}}`
   }
   return String(value)
 }
@@ -251,59 +252,31 @@ export const pullOrg = async (config: ResolvedConfig) => {
     )
   )
 
-  // Use ts-morph to generate TS, then emit JS + d.ts
-  const project = new Project({
-    compilerOptions: {
-      declaration: true,
-      module: ModuleKind.CommonJS,
-      target: ScriptTarget.ESNext,
-      outDir,
-    },
-    useInMemoryFileSystem: true,
-  })
+  // What TypeScript emits for `export const users = { … } as const` and the
+  // same for `accounts`, written out directly so that the CLI needs no
+  // compiler.
+  writeFileSync(
+    join(outDir, 'index.js'),
+    `"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.users = ${toSource(usersRecord, 'value')};
+exports.accounts = ${toSource(accountsRecord, 'value')};
+`
+  )
 
-  const sourceFile = project.createSourceFile('index.ts', '')
-
-  sourceFile.addVariableStatement({
-    isExported: true,
-    declarationKind: VariableDeclarationKind.Const,
-    declarations: [
-      {
-        name: 'users',
-        initializer: `${toLiteral(usersRecord)} as const`,
-      },
-    ],
-  })
-
-  sourceFile.addVariableStatement({
-    isExported: true,
-    declarationKind: VariableDeclarationKind.Const,
-    declarations: [
-      {
-        name: 'accounts',
-        initializer: `${toLiteral(accountsRecord)} as const`,
-      },
-    ],
-  })
-
-  const emitResult = sourceFile.getEmitOutput()
-  for (const outputFile of emitResult.getOutputFiles()) {
-    const filePath = outputFile.getFilePath()
-    const fileName = filePath.includes('.d.ts') ? 'index.d.ts' : 'index.js'
-    let contents = outputFile.getText()
-    // Augment the SDK's global `ZodiacGeneratedCodegen` interface so
-    // `constellation()`'s default type parameter picks up these literal
-    // shapes automatically.
-    if (fileName === 'index.d.ts') {
-      contents += `
+  // Augment the SDK's global `ZodiacGeneratedCodegen` interface so
+  // `constellation()`'s default type parameter picks up these literal shapes
+  // automatically.
+  writeFileSync(
+    join(outDir, 'index.d.ts'),
+    `export declare const users: ${toSource(usersRecord, 'type')};
+export declare const accounts: ${toSource(accountsRecord, 'type')};
 declare global {
-    interface ZodiacGeneratedCodegen {
-        users: typeof users;
-        accounts: typeof accounts;
-    }
+  interface ZodiacGeneratedCodegen {
+    users: typeof users;
+    accounts: typeof accounts;
+  }
 }
 `
-    }
-    writeFileSync(join(outDir, fileName), contents)
-  }
+  )
 }

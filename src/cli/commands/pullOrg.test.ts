@@ -1,8 +1,9 @@
 import { describe, it, expect, mock, afterEach } from 'bun:test'
-import { readFileSync, rmSync, mkdirSync } from 'fs'
+import { readFileSync, rmSync, mkdirSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { getAddress } from 'ethers'
+import ts from 'typescript'
 
 const mockUsers = [
   {
@@ -259,4 +260,67 @@ describe('pullOrg', () => {
     expect(dts).toContain('declare global')
     expect(dts).toContain('ZodiacGeneratedCodegen')
   })
+
+  // The declarations are written out rather than compiled, so they have to
+  // say exactly what TypeScript infers for the generated values `as const`:
+  // the literal shapes are what `constellation()` completes labels from.
+  it('declares the types TypeScript gives the values as const', async () => {
+    mkdirSync(tmpDir, { recursive: true })
+
+    const { pullOrg } = await import('./pullOrg')
+    await pullOrg({ apiKey: 'zodiac_test-key', rootDir: tmpDir })
+
+    const js = ts.createSourceFile(
+      'index.js',
+      readFileSync(join(tmpDir, '.zodiac', 'index.js'), 'utf-8'),
+      ts.ScriptTarget.ESNext
+    )
+    const asConst = js.statements.flatMap((statement) => {
+      if (!ts.isExpressionStatement(statement)) return []
+      const { expression } = statement
+      if (
+        !ts.isBinaryExpression(expression) ||
+        !ts.isPropertyAccessExpression(expression.left) ||
+        expression.left.expression.getText(js) !== 'exports'
+      ) {
+        return []
+      }
+      return [
+        `export const ${expression.left.name.text} = ${expression.right.getText(js)} as const`,
+      ]
+    })
+
+    expect(asConst).toHaveLength(2)
+
+    writeFileSync(join(tmpDir, 'asConst.ts'), asConst.join('\n'))
+    writeFileSync(
+      join(tmpDir, 'check.ts'),
+      `import type * as generated from './.zodiac'
+import type * as asConst from './asConst'
+type Equals<A, B> =
+  (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
+    ? true
+    : false
+export const users: Equals<typeof generated.users, typeof asConst.users> = true
+export const accounts: Equals<typeof generated.accounts, typeof asConst.accounts> = true
+`
+    )
+
+    const program = ts.createProgram([join(tmpDir, 'check.ts')], {
+      strict: true,
+      noEmit: true,
+      target: ts.ScriptTarget.ESNext,
+      module: ts.ModuleKind.ESNext,
+      moduleResolution: ts.ModuleResolutionKind.Bundler,
+      types: [],
+    })
+
+    expect(
+      ts
+        .getPreEmitDiagnostics(program)
+        .map(({ messageText }) =>
+          ts.flattenDiagnosticMessageText(messageText, '\n')
+        )
+    ).toEqual([])
+  }, 30_000)
 })
