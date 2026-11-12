@@ -86,9 +86,14 @@ const asNodeType = (type: string): NodeType => {
  * Whether a key can be written without quotes. Chain ids are grouping keys in
  * the generated data, and an unquoted number keys the `as const` type by chain
  * id — quoted, it would key by a string the callers never hold.
+ *
+ * Only digits that read back as themselves count: `007` would key `7` (or be
+ * a legacy octal syntax error in strict code), and a number beyond 2^53 would
+ * be rounded to a different key.
  */
 const isBareKey = (key: string): boolean =>
-  /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key) || /^\d+$/.test(key)
+  /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key) ||
+  (/^\d+$/.test(key) && String(Number(key)) === key)
 
 export const pullOrg = async (config: ResolvedConfig) => {
   const client = new ApiClient({

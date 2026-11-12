@@ -15,6 +15,10 @@ const mockUsers = [
     fullName: 'Bob Example',
     personalSafes: {},
   },
+  // Names are free text: some read as numbers but aren't canonical ones.
+  { id: 'user-3', fullName: '007', personalSafes: {} },
+  { id: 'user-4', fullName: '12345678901234567890', personalSafes: {} },
+  { id: 'user-5', fullName: '42', personalSafes: {} },
 ]
 
 const mockAccounts = [
@@ -225,6 +229,30 @@ describe('pullOrg', () => {
         `Treasury (${getAddress('0x8888000000000000000000000000000000008888')})`
       ].label
     ).toBe('Treasury')
+  })
+
+  // `007` unquoted is a legacy octal literal, a syntax error in strict code,
+  // and an unquoted 20-digit key is rounded to another number. Only keys that
+  // read back as themselves may go unquoted.
+  it('keeps keys that only look like numbers as written', async () => {
+    mkdirSync(tmpDir, { recursive: true })
+
+    const { pullOrg } = await import('./pullOrg')
+    await pullOrg({ apiKey: 'zodiac_test-key', rootDir: tmpDir })
+
+    const outDir = join(tmpDir, '.zodiac')
+    const js = readFileSync(join(outDir, 'index.js'), 'utf-8')
+    const dts = readFileSync(join(outDir, 'index.d.ts'), 'utf-8')
+    for (const source of [js, dts]) {
+      expect(source).toContain('"007":')
+      expect(source).toContain('"12345678901234567890":')
+      expect(source).toMatch(/\s42:/)
+    }
+
+    const { users } = await import(join(outDir, 'index.js'))
+    expect(Object.keys(users)).toEqual(
+      expect.arrayContaining(['007', '12345678901234567890', '42'])
+    )
   })
 
   it('writes JS and d.ts to .zodiac/', async () => {
