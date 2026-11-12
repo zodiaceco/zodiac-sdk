@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.11.3](https://github.com/zodiaceco/zodiac-sdk/compare/v2.11.2...v2.11.3) (2026-11-12)
+
+
+### Bug Fixes
+
+* **cli:** quote numeric-looking keys that don't read back as themselves ([#108](https://github.com/zodiaceco/zodiac-sdk/issues/108)) ([22a2628](https://github.com/zodiaceco/zodiac-sdk/commit/22a26283ebeff6665fb3fc0009c41e845684b4d3))
+
 ## [2.11.2](https://github.com/zodiaceco/zodiac-sdk/compare/v2.11.1...v2.11.2) (2026-11-12)
 
 
