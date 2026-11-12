@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.11.2](https://github.com/zodiaceco/zodiac-sdk/compare/v2.11.1...v2.11.2) (2026-11-12)
+
+
+### Bug Fixes
+
+* **deps:** stop installing ts-morph with the SDK ([#106](https://github.com/zodiaceco/zodiac-sdk/issues/106)) ([683c402](https://github.com/zodiaceco/zodiac-sdk/commit/683c40232a2d600081ee9c17d8e4747758aaad89))
+
 ## [2.11.1](https://github.com/zodiaceco/zodiac-sdk/compare/v2.11.0...v2.11.1) (2026-11-12)
 
 
