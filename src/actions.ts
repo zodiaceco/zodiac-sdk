@@ -1,6 +1,6 @@
 import type { Address, ChainId } from '@zodiaceco/api-types'
-import type { allow as ethereumKit } from 'defi-kit/eth'
 import type { NodeRef } from './constellation'
+import type { DeFiKitParams } from './defiKit.generated'
 import { recipientChains } from './permissionEntries'
 import type {
   AllowanceKey,
@@ -116,7 +116,9 @@ export const custom = ({
  *
  * Protocols and parameters are typed against the Ethereum kit, the widest of
  * the chains DeFi Kit serves. Values that only exist on another chain still
- * type-check; the API validates them when the annotation is resolved.
+ * type-check; the API validates them when the annotation is resolved. The
+ * types are a flattened copy (`defiKit.generated.ts`), so the SDK does not
+ * depend on DeFi Kit at runtime or for its types.
  */
 export const defikit: DeFiKit = new Proxy({} as DeFiKit, {
   get: (_, protocol: string) =>
@@ -281,16 +283,10 @@ type BridgeTarget = {
   receive: readonly Address[]
 }
 
-type EthereumKit = typeof ethereumKit
-
 type DeFiKit = {
-  readonly [Protocol in keyof EthereumKit]: {
-    readonly [Verb in keyof EthereumKit[Protocol]]: DeFiKitVerb<
-      EthereumKit[Protocol][Verb]
-    >
+  readonly [Protocol in keyof DeFiKitParams]: {
+    readonly [Verb in keyof DeFiKitParams[Protocol]]: (
+      params: DeFiKitParams[Protocol][Verb] & { label: string }
+    ) => DeFiKitEntry
   }
 }
-
-type DeFiKitVerb<Verb> = Verb extends (params: infer Params) => unknown
-  ? (params: Params & { label: string }) => DeFiKitEntry
-  : (params: { label: string }) => DeFiKitEntry

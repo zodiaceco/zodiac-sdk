@@ -53,6 +53,7 @@
     "check:format": "prettier --list-different .",
     "check:types": "tsc -p tsconfig.json",
     "fix:format": "prettier --write .",
+    "generate:defikit": "bun scripts/generate-defikit-types.ts",
     "test": "bun scripts/test.ts",
     "install-local-api-types": "cd ../zodiac-os/public-packages/api-types && pnpm pack-tmp && cd ../../../zodiac-sdk && tar -xzf /tmp/zodiac-os-api-types.tgz --strip-components=1 -C node_modules/@zodiaceco/api-types"
   },
@@ -60,7 +61,6 @@
     "@epic-web/invariant": "1.0.0",
     "@zodiaceco/api-types": "^1.14.0",
     "commander": "^14.0.3",
-    "defi-kit": "^2.26.12",
     "dotenv": "^17.4.2",
     "jiti": "^2.7.0",
     "open": "^11.0.0",
@@ -72,6 +72,7 @@
   },
   "devDependencies": {
     "@types/bun": "^1.2.21",
+    "defi-kit": "^2.27.3",
     "ethers": "^6.13.0",
     "prettier": "^3.6.2",
     "rimraf": "^6.1.0",
