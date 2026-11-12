@@ -322,7 +322,9 @@ Each helper covers a different kind of action:
   parameters, plus a `label`. A DeFi Kit entry is nothing but its annotation;
   the permissions behind it are fetched from the annotation's uri at deploy, so
   `push()` fetches nothing. Protocols and parameters are typed against the
-  Ethereum kit, the widest of the chains DeFi Kit serves.
+  Ethereum kit, the widest of the chains DeFi Kit serves, as of the DeFi Kit
+  release the SDK was built with — the SDK carries those types itself and does
+  not install DeFi Kit.
 - `custom()` labels a bag of plain `allow`-kit permissions — everything the
   other helpers don't cover. It takes permissions, not other actions.
 
