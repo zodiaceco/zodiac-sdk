@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.11.1](https://github.com/zodiaceco/zodiac-sdk/compare/v2.11.0...v2.11.1) (2026-11-12)
+
+
+### Bug Fixes
+
+* **deps:** stop installing defi-kit with the SDK ([#104](https://github.com/zodiaceco/zodiac-sdk/issues/104)) ([3c1066b](https://github.com/zodiaceco/zodiac-sdk/commit/3c1066b8b2a634f49b6d9282e32ceb0293b4f265))
+
 ## [2.11.0](https://github.com/zodiaceco/zodiac-sdk/compare/v2.10.0...v2.11.0) (2026-10-30)
 
 
