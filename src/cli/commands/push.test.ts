@@ -8,9 +8,11 @@ import { ConstellationRejectedError } from '../../push'
 
 const mockPush = mock()
 const mockSpecify = mock()
+const mockCheck = mock()
 
 mock.module('../../push', () => ({
   ConstellationRejectedError,
+  check: mockCheck,
   push: mockPush,
   specify: mockSpecify,
 }))
@@ -37,6 +39,7 @@ describe('pushEntrypoint', () => {
     process.exitCode = 0
     mockPush.mockReset()
     mockSpecify.mockReset()
+    mockCheck.mockReset()
   })
 
   it('prints what Zodiac refused and fails without a stack trace', async () => {
@@ -242,9 +245,82 @@ describe('pushEntrypoint', () => {
         JSON.stringify([{ label: 'Ops', specification: [] }], null, 2)
       )
       expect(mockPush).not.toHaveBeenCalled()
+      expect(mockCheck).not.toHaveBeenCalled()
     } finally {
       log.mockRestore()
       if (ZODIAC_API_KEY != null) process.env.ZODIAC_API_KEY = ZODIAC_API_KEY
+    }
+  })
+
+  it('has Zodiac check a dry run with the API key from the config file', async () => {
+    mockSpecify.mockReturnValue([])
+    mockCheck.mockResolvedValue(undefined)
+
+    const { entrypoint, config } = createProject()
+    writeFileSync(entrypoint, 'export const ops = "ops"\n')
+
+    const log = spyOn(console, 'log').mockImplementation(() => {})
+    const error = spyOn(console, 'error').mockImplementation(() => {})
+
+    try {
+      await pushEntrypoint({ entrypoint, config, dryRun: true })
+
+      expect(mockCheck).toHaveBeenCalledWith(
+        { ops: 'ops' },
+        expect.objectContaining({ apiKey: 'zodiac_from_config' })
+      )
+      expect(error).toHaveBeenCalledWith(
+        'Zodiac checked the constellations and found no issues.'
+      )
+      expect(mockPush).not.toHaveBeenCalled()
+      expect(process.exitCode).toBe(0)
+    } finally {
+      log.mockRestore()
+      error.mockRestore()
+    }
+  })
+
+  it('prints what Zodiac refused on a dry run and fails', async () => {
+    mockSpecify.mockReturnValue([])
+    mockCheck.mockRejectedValue(
+      new ConstellationRejectedError(
+        'Production',
+        new ApiRequestError(
+          'Some roles of this constellation have permissions that cannot be deployed',
+          {
+            status: 400,
+            statusText: 'Bad Request',
+            details: {
+              issues: [
+                {
+                  path: ['specification', 0, 'roles', 'ops'],
+                  message:
+                    'The permissions of role "ops" are not valid: Root param type must be `Calldata`, got `Static`',
+                },
+              ],
+            },
+          }
+        ),
+        () => 'opsRoles ("Ops Roles")'
+      )
+    )
+
+    const log = spyOn(console, 'log').mockImplementation(() => {})
+    const error = spyOn(console, 'error').mockImplementation(() => {})
+
+    try {
+      await pushEntrypoint({ ...createProject(), dryRun: true })
+
+      expect(error).toHaveBeenCalledWith(
+        [
+          'Zodiac refused the constellation "Production". Some roles of this constellation have permissions that cannot be deployed:',
+          '  • opsRoles ("Ops Roles") › roles › ops: The permissions of role "ops" are not valid: Root param type must be `Calldata`, got `Static`',
+        ].join('\n')
+      )
+      expect(process.exitCode).toBe(1)
+    } finally {
+      log.mockRestore()
+      error.mockRestore()
     }
   })
 

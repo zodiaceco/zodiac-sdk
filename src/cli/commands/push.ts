@@ -2,7 +2,7 @@ import { dirname, resolve } from 'node:path'
 import { config as loadDotenv } from 'dotenv'
 import open from 'open'
 import { recordContracts } from '../../allow/project'
-import { ConstellationRejectedError, push, specify } from '../../push'
+import { check, ConstellationRejectedError, push, specify } from '../../push'
 import { loadConfig, loadProjectConfig } from '../config'
 import { loadModule } from '../loadModule'
 import { findSource } from '../source'
@@ -20,7 +20,11 @@ type PushEntrypointOptions = {
   /** Where the constellations are defined. @default the repository the
    * entrypoint is checked out from, see {@link findSource} */
   source?: string
-  /** Print what would be pushed instead of pushing it, without an API key. */
+  /**
+   * Print what would be pushed instead of pushing it, and have Zodiac check it
+   * as it would check a push, without storing anything. Without an API key it
+   * is printed only.
+   */
   dryRun?: boolean
 }
 
@@ -96,6 +100,11 @@ const pushProject = async (
 
   if (dryRun) {
     console.log(JSON.stringify(specify(nodes), null, 2))
+
+    await checkProject(nodes, {
+      configPath,
+      source: source ?? (await findSource(dirname(entrypointPath))),
+    })
     return
   }
 
@@ -123,3 +132,51 @@ const pushProject = async (
     process.exitCode = 1
   }
 }
+
+/**
+ * Has Zodiac check what a dry run printed, the same way a push would be
+ * checked. Status goes to stderr, so the printed specification can still be
+ * piped on. A missing API key skips the check rather than failing, so a dry
+ * run keeps working offline.
+ */
+const checkProject = async (
+  nodes: Parameters<typeof check>[0],
+  { configPath, source }: { configPath?: string; source?: string }
+) => {
+  const apiKey = await loadConfig(configPath, {
+    onMissingKey: async () => {
+      throw new MissingApiKeyError()
+    },
+  }).then(
+    (config) => config.apiKey,
+    (error: unknown) => {
+      if (error instanceof MissingApiKeyError) {
+        return null
+      }
+
+      throw error
+    }
+  )
+
+  if (apiKey == null) {
+    console.warn(
+      'warning: not checked by Zodiac, as no API key was found. Set ZODIAC_API_KEY or run `zodiac init` to have dry runs checked.'
+    )
+    return
+  }
+
+  try {
+    await check(nodes, { apiKey, source })
+
+    console.error('Zodiac checked the constellations and found no issues.')
+  } catch (error) {
+    if (!(error instanceof ConstellationRejectedError)) {
+      throw error
+    }
+
+    console.error(error.message)
+    process.exitCode = 1
+  }
+}
+
+class MissingApiKeyError extends Error {}

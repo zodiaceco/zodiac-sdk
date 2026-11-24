@@ -1,7 +1,7 @@
 import { describe, it, expect, mock } from 'bun:test'
 import { c, encodeKey, Operator, ParameterType } from 'zodiac-roles-sdk'
 import { ApiRequestError } from '../api'
-import { ConstellationRejectedError, push, specify } from '../push'
+import { check, ConstellationRejectedError, push, specify } from '../push'
 import { constellation } from '../constellation'
 import * as codegen from './codegen.mock'
 import * as treasury_ops from './policyRole.mock'
@@ -1034,5 +1034,84 @@ describe('specify', () => {
     expect(specify(nodes)).toEqual([
       { workspaceId: expect.any(String), ...lastPayload() },
     ])
+  })
+})
+
+describe('check', () => {
+  const setup = () =>
+    constellation({ workspace: 'GG', label: 'test', chain: 1 }, { codegen })
+
+  it('has Zodiac check what push would apply, without applying it', async () => {
+    const eth = setup()
+    const nodes = { dao: eth.safe['GG DAO'] }
+    const source = 'https://github.com/gnosisguild/treasury'
+
+    const { api: pushApi, lastPayload } = mockApi()
+    await push(nodes, { api: pushApi, source })
+
+    const checkConstellation = mock(() => Promise.resolve({ ok: true }))
+    const applyConstellation = mock()
+    await check(nodes, {
+      api: { checkConstellation, applyConstellation } as any,
+      source,
+    })
+
+    expect(applyConstellation).not.toHaveBeenCalled()
+    expect(checkConstellation).toHaveBeenCalledWith(
+      expect.any(String),
+      lastPayload()
+    )
+  })
+
+  it('reports what Zodiac refuses, naming each node by its ref', async () => {
+    const eth = setup()
+    const api = {
+      checkConstellation: mock(() =>
+        Promise.reject(
+          new ApiRequestError(
+            'Some roles of this constellation have permissions that cannot be deployed',
+            {
+              status: 400,
+              statusText: 'Bad Request',
+              details: {
+                issues: [
+                  {
+                    path: ['specification', 0, 'roles', 'ops'],
+                    message: 'not valid',
+                  },
+                ],
+              },
+            }
+          )
+        )
+      ),
+    } as any
+
+    const error = await check({ dao: eth.safe['GG DAO'] }, { api }).catch(
+      (error: unknown) => error
+    )
+
+    expect(error).toBeInstanceOf(ConstellationRejectedError)
+    expect((error as ConstellationRejectedError).issues).toEqual([
+      { path: 'dao ("GG DAO") › roles › ops', message: 'not valid' },
+    ])
+  })
+
+  it('passes on failures that are not refusals', async () => {
+    const eth = setup()
+    const api = {
+      checkConstellation: mock(() =>
+        Promise.reject(
+          new ApiRequestError('Internal Server Error', {
+            status: 500,
+            statusText: 'Internal Server Error',
+          })
+        )
+      ),
+    } as any
+
+    await expect(
+      check({ dao: eth.safe['GG DAO'] }, { api })
+    ).rejects.toBeInstanceOf(ApiRequestError)
   })
 })

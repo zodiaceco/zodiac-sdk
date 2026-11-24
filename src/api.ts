@@ -109,6 +109,20 @@ export class ApiClient {
   }
 
   /**
+   * Checks a specification the way applying it would, without storing
+   * anything: what applying it would refuse is refused in the same words.
+   */
+  checkConstellation(
+    workspaceId: UUID,
+    payload: ApplyConstellationPayload
+  ): Promise<{ ok: true }> {
+    return this.postJson(
+      `workspace/${workspaceId}/constellation/check`,
+      payload
+    )
+  }
+
+  /**
    * Reports what the accounts a specification names look like on chain.
    *
    * Declarations are merged over what is read, and a node with no address is

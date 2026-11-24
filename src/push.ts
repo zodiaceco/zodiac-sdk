@@ -71,30 +71,68 @@ export async function push(
         ...(opts?.source != null && { source: opts.source }),
         specification,
       })
-      .catch((error: unknown) => {
-        // Whatever Zodiac refuses — a node, a reference, the workspace — is
-        // said in its own words rather than as a failed request.
-        if (
-          error instanceof ApiRequestError &&
-          error.status >= 400 &&
-          error.status < 500
-        ) {
-          throw new ConstellationRejectedError(meta.label, error, (index) => {
-            const node = groupNodes[index]
-
-            return node == null
-              ? `node ${index}`
-              : `${refs.byIdentity.get(node)} ("${node.label}")`
-          })
-        }
-
-        throw error
-      })
+      .catch(rejectAs(meta, groupNodes, refs))
     results.push(result)
   }
 
   return results
 }
+
+type CheckOpts = PushOpts
+
+/**
+ * Has Zodiac check the given nodes the way {@link push} would, without
+ * storing anything: each constellation is sent as `push()` would send it, and
+ * is refused exactly when a push would be. Throws a
+ * {@link ConstellationRejectedError} for the first constellation Zodiac
+ * refuses.
+ */
+export async function check(
+  nodes: ConstellationNode[] | { [key: string]: ConstellationNode },
+  opts?: CheckOpts
+): Promise<void> {
+  const api = opts?.api ?? new ApiClient({ apiKey: opts?.apiKey })
+  const { refs, groups } = groupNodes(nodes)
+
+  for (const { meta, nodes: groupNodes } of groups) {
+    await api
+      .checkConstellation(meta.workspaceId, {
+        label: meta.label,
+        chain: meta.chain,
+        ...(opts?.source != null && { source: opts.source }),
+        specification: groupNodes.map((n) => nodeToSpec(n, refs)),
+      })
+      .catch(rejectAs(meta, groupNodes, refs))
+  }
+}
+
+/**
+ * Whatever Zodiac refuses — a node, a reference, the workspace — is said in
+ * its own words rather than as a failed request.
+ */
+const rejectAs =
+  (
+    meta: ConstellationMeta,
+    groupNodes: ConstellationNodeInternal[],
+    refs: RefsIndex
+  ) =>
+  (error: unknown): never => {
+    if (
+      error instanceof ApiRequestError &&
+      error.status >= 400 &&
+      error.status < 500
+    ) {
+      throw new ConstellationRejectedError(meta.label, error, (index) => {
+        const node = groupNodes[index]
+
+        return node == null
+          ? `node ${index}`
+          : `${refs.byIdentity.get(node)} ("${node.label}")`
+      })
+    }
+
+    throw error
+  }
 
 /** A constellation as `push()` applies it, for {@link specify}. */
 export type ConstellationSpecification = {

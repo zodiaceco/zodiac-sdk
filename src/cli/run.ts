@@ -105,7 +105,7 @@ export const run = async (argv: string[] = process.argv) => {
     .option('--no-open', 'do not open the review pages in a browser')
     .option(
       '--dry-run',
-      'print what would be pushed instead of pushing it (needs no API key)'
+      'print what would be pushed and have Zodiac check it, without storing anything (prints only, without an API key)'
     )
     .option(
       '--source <url>',
