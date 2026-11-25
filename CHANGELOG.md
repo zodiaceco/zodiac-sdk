@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.12.0](https://github.com/zodiaceco/zodiac-sdk/compare/v2.11.2...v2.12.0) (2026-11-25)
+
+
+### Features
+
+* **cli:** have Zodiac check a dry run ([#110](https://github.com/zodiaceco/zodiac-sdk/issues/110)) ([fedc926](https://github.com/zodiaceco/zodiac-sdk/commit/fedc926b7e8ca3fde7d0da8106195e9b782ae9b6))
+
+
+### Bug Fixes
+
+* **cli:** quote numeric-looking keys that don't read back as themselves ([#108](https://github.com/zodiaceco/zodiac-sdk/issues/108)) ([22a2628](https://github.com/zodiaceco/zodiac-sdk/commit/22a26283ebeff6665fb3fc0009c41e845684b4d3))
+
 ## [2.11.2](https://github.com/zodiaceco/zodiac-sdk/compare/v2.11.1...v2.11.2) (2026-11-12)
 
 
